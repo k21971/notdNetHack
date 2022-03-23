@@ -1,5 +1,3 @@
-local.mk
-
 src/notdnethack
 util/recover
 util/makedefs
