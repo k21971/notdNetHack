@@ -4390,7 +4390,7 @@ boolean ranged;
 						/* assumes the player was polyed and not in natural form */
 						You("burn up!");
 						rehumanize();
-						break;
+						return (MM_HIT | MM_DEF_LSVD);
 					}
 					else {
 						if (vis)
@@ -9121,7 +9121,7 @@ boolean ranged;
 	default:
 		impossible("Bad attack type (%d)!", attk->adtyp);
 	}
-	impossible("Reached end of xmeleehurty -- report this to Nero on ##nethack-variants.");
+	impossible("Reached end of xmeleehurty -- report this to Demo on ##nethack-variants.");
 	return MM_MISS;
 }
 
@@ -14759,6 +14759,8 @@ int vis;						/* True if action is at all visible to the player */
 			if (otmp && (otmp->oartifact == ART_GREAT_CLAWS_OF_URDLEN || otmp->oartifact == ART_CLAWS_OF_THE_REVENANCER || otmp->otyp == KNUCKLE_DUSTERS || check_oprop(otmp, OPROP_BLADED))){
 				attackmask |= SLASH;
 			}
+			if(youagr && Race_if(PM_ETHEREALOID))
+				attackmask |= EXPLOSION;
 
 			if (/* claw attacks are slashing (even while wearing gloves?) */
 				(attk && attk->aatyp == AT_CLAW) ||
@@ -17712,6 +17714,7 @@ struct monst *mdef;
 
 #define DID_MOVE 			u.uen -= 8;\
 			nomul(0, NULL);\
+			u.uattked = TRUE;\
 			return TRUE;
 
 /* monk_moves()

@@ -1910,6 +1910,7 @@ u_init()
 	u.uinsight = 0;
 	if(Role_if(PM_ANACHRONOUNBINDER)) u.uinsight = 100;
 	u.veil = TRUE;
+	if(Role_if(PM_ANACHRONOUNBINDER)) u.veil = FALSE;
 	u.sowdisc = 0;
 	u.voidChime = 0;
 	adjabil(0,1);
@@ -2765,6 +2766,10 @@ u_init()
 	u.oonaenergy = !rn2(3) ? AD_FIRE : rn2(2) ? AD_COLD : AD_ELEC;
 	u.ring_wishes = -1;
 	dungeon_topology.alt_tower = !rn2(8);
+	
+	u.silver_flame_z.dnum = u.uz.dnum;
+	u.silver_flame_z.dlevel = rn2(dunlevs_in_dungeon(&u.uz)) + dungeons[u.uz.dnum].depth_start;
+
 	int common_caste = 0;
 	switch(rn2(6)){
 		case 0:
