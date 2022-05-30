@@ -65,6 +65,7 @@ const struct propname {
     { SICK_RES, "sickness resistance" },
     { ANTIMAGIC, "magic resistance" },
     { HALLUC_RES, "hallucination resistance" },
+	{ BLOCK_CONFUSION, "confusion resistance" },
     { FUMBLING, "fumbling" },
     { HUNGER, "voracious hunger" },
     { TELEPAT, "telepathic" },
@@ -105,6 +106,7 @@ const struct propname {
     { SHATTERING, "fracturing" },
     { DARKVISION_ONLY, "darksight-override" },
     { DIMENSION_LOCK, "dimensional lock" },
+	{ CLEAR_THOUGHTS, "clear thoughts" },
     {  0, 0 },
 };
 
@@ -694,11 +696,11 @@ nh_timeout()
 		u.divetimer--;
 		if(u.divetimer<=3) You("are running short on air.");
 		if(u.divetimer==1) You("are running out of air!");
-	} else if (!u.usubwater && !u.ustuck && !Babble){ /* limited duration dive, 2 turns to 6 turns naturally, 8 turns with magic */ 
-		if(u.divetimer < (ACURR(A_CON))/3) u.divetimer++;
+	} else if (!u.usubwater){ /* limited duration dive, 2 turns to 6 turns naturally, 8 turns with magic */ 
+		if(u.divetimer < (ACURR(A_CON))/3 && !u.ustuck && !Babble && !Screaming) u.divetimer++;
 		else if(u.divetimer > (ACURR(A_CON))/3) u.divetimer--;
 	}
-	
+
 	if((Babble || Screaming) && !Strangled && !FrozenAir && !BloodDrown && u.divetimer > 1)
 		u.divetimer--;
 
@@ -2174,6 +2176,9 @@ struct obj * obj;
 	case WAX_CANDLE:
 		radius = candle_light_range(obj);
 		break;
+	case MAGIC_TORCH:
+		radius = 4;
+		break;
 	case SUNROD:
 	case TORCH:
 	case SHADOWLANDER_S_TORCH:
@@ -2296,7 +2301,7 @@ lightsource_timed(obj)
 struct obj * obj;
 {
 	return (obj && (
-		(obj->oartifact == ART_HOLY_MOONLIGHT_SWORD) ||	/* ??? */
+		(obj->oartifact == ART_HOLY_MOONLIGHT_SWORD) ||	/* ??? Chris: The timer's used to extinquish it when it's dropped. */
 		(obj->otyp == DOUBLE_LIGHTSABER) ||
 		(obj->otyp == LIGHTSABER) ||
 		(obj->otyp == BEAMSWORD) ||
@@ -2361,6 +2366,7 @@ begin_burn(obj)
 	if (obj->age == 0 && 
 		obj->otyp != MAGIC_LAMP && 
 		obj->otyp != CANDLE_OF_INVOCATION &&
+		obj->otyp != MAGIC_TORCH &&
 		obj->otyp != POT_STARLIGHT && 
 		obj->otyp != CHUNK_OF_FOSSIL_DARK && 
 		!artifact_light(obj) && 
@@ -2377,6 +2383,7 @@ begin_burn(obj)
 	/* some things need to set lamplit on their own here */
 	if (obj->otyp == MAGIC_LAMP ||
 		obj->otyp == CANDLE_OF_INVOCATION ||
+		obj->otyp == MAGIC_TORCH ||
 		artifact_light(obj) ||
 		obj_eternal_light(obj))
 		obj->lamplit = TRUE;
@@ -2440,6 +2447,7 @@ end_burn(obj, timer_attached)
 
 	if (obj->otyp == MAGIC_LAMP 
 		|| obj->otyp == CANDLE_OF_INVOCATION
+		|| obj->otyp == MAGIC_TORCH
 		|| obj->otyp == POT_STARLIGHT
 		|| obj->otyp == CHUNK_OF_FOSSIL_DARK
 		|| artifact_light(obj)
@@ -2554,6 +2562,7 @@ long timeout;
 		mon->mextra_p->esum_p->summoner->summonpwr -= mon->mextra_p->esum_p->summonstr;
 		mon->mextra_p->esum_p->summoner = (struct monst *)0;
 		mon->mextra_p->esum_p->sm_id = 0;
+		mon->mextra_p->esum_p->sm_o_id = 0;
 	}
 
 	/* special case for vexing orbs -- awful */
@@ -2580,6 +2589,39 @@ long timeout;
 	/* if we are stopping the timer because mon died or vanished, reduce tax on summoner */
 	if (get_mx(mon, MX_ESUM) && DEADMONSTER(mon) && mon->mextra_p->esum_p->summoner) {
 		mon->mextra_p->esum_p->summoner->summonpwr -= mon->mextra_p->esum_p->summonstr;
+		if(mon->mextra_p->esum_p->sm_o_id){
+			struct obj *obj = find_oid(mon->mextra_p->esum_p->sm_o_id);
+			if(obj){
+				if(get_ox(obj, OX_EMON)){
+					if(big_to_little(mon->mtyp) == big_to_little(EMON(obj)->mtyp)){
+						EMON(obj)->data = mon->data;
+						EMON(obj)->mhpmax = mon->mhpmax;
+						EMON(obj)->mhp = mon->mhpmax;
+						EMON(obj)->m_lev = mon->m_lev;
+						for(int i = 0; i < MPROP_SIZE; i++){
+							EMON(obj)->mintrinsics[i] = mon->mintrinsics[i];
+						}
+						EMON(obj)->mstr = mon->mstr;
+						EMON(obj)->mdex = mon->mdex;
+						EMON(obj)->mcon = mon->mcon;
+						EMON(obj)->mint = mon->mint;
+						EMON(obj)->mwis = mon->mwis;
+						EMON(obj)->mcha = mon->mcha;
+						EMON(obj)->female = mon->female;
+					}
+					EMON(obj)->mcrazed = mon->mcrazed;
+					EMON(obj)->mnotlaugh = mon->mnotlaugh;
+					EMON(obj)->mlaughing = mon->mlaughing;
+					EMON(obj)->mdoubt = mon->mdoubt;
+					
+					EMON(obj)->menvy = mon->menvy;
+					EMON(obj)->msanctity = mon->msanctity;
+					
+					EMON(obj)->encouraged = mon->encouraged;
+					EMON(obj)->mtrapseen = mon->mtrapseen;
+				}
+			}
+		}
 	}
 }
 void

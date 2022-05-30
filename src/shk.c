@@ -971,8 +971,16 @@ register struct mkroom *sroom;
 
 	if (!mtmp)
 		return(FALSE);
-	else
-		return((boolean)(inhishop(mtmp)));
+	struct monst *curmon = fmon;
+	for(; curmon; curmon = curmon->nmon)
+		if(curmon == mtmp)
+			break;
+	if(!curmon){
+		impossible("Bad resident pointer found on tended shop room call, zeroing it out.");
+		sroom->resident = mtmp = (struct monst *)0;
+		return FALSE;
+	}
+	return((boolean)(inhishop(mtmp)));
 }
 
 STATIC_OVL struct bill_x *
@@ -5890,7 +5898,7 @@ struct monst *mon;
 		if(u.specialSealsActive&SEAL_TWO_TREES && !Invis) count++;
 		if(u.specialSealsActive&SEAL_MISKA && !Invis && u.ulevel >= 10) count++;
 		if(u.specialSealsActive&SEAL_NUDZIRATH) count++;
-		// if(u.sealsActive&SEAL_BLACK_WEB);
+		// if(u.specialSealsActive&SEAL_BLACK_WEB);
 		// if(u.specialSealsActive&SEAL_NUMINA);
 	}
 	return count;
@@ -5943,7 +5951,7 @@ struct monst *mon;
 		// if(u.specialSealsActive&SEAL_ACERERAK && !NoBInvis && !ublindf) count++;
 		if(u.specialSealsActive&SEAL_COUNCIL && !(Blind || (ublindf && !(ublindf->otyp == LENSES || ublindf->otyp == LIVING_MASK)))) count++;
 		if(u.specialSealsActive&SEAL_ALIGNMENT_THING) count++;
-		if(u.sealsActive&SEAL_BLACK_WEB && !Invis && (dimness(u.ux, u.uy) <= 0)) count++;
+		if(u.specialSealsActive&SEAL_BLACK_WEB && !Invis && (dimness(u.ux, u.uy) <= 0)) count++;
 	}
 	if(u.specialSealsActive&SEAL_NUMINA) count++;
 //	if(u.specialSealsActive&SEAL_UNKNOWN_GOD) count++;

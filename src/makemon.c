@@ -1727,47 +1727,109 @@ boolean goodequip;
 					(void)mongets(mtmp, SHEMAGH, mkobjflags);
 					(void)mongets(mtmp, ELVEN_TOGA, mkobjflags);
 					(void)mongets(mtmp, ELVEN_BOOTS, mkobjflags);
+				} else if(mm == PM_MYRKALFR){
+					mtmp->m_lev = 4;
+					mtmp->mhp = mtmp->mhpmax = 6*mtmp->m_lev;
+					if(mtmp->female){
+						otmp = mksobj(NOBLE_S_DRESS, mkobjflags);
+						set_material_gm(otmp, PLASTIC);
+						otmp->obj_color = CLR_WHITE;
+						otmp->ohaluengr = TRUE;
+						otmp->oward = LAST_BASTION_SYMBOL;
+						add_oprop(otmp, OPROP_REFL);
+						fix_object(otmp);
+						(void) mpickobj(mtmp, otmp);
+						(void)mongets(mtmp, BODYGLOVE, mkobjflags);
+						(void)mongets(mtmp, HEELED_BOOTS, mkobjflags);
+						otmp = mongets(mtmp, GLOVES, mkobjflags);
+						if(otmp){
+							otmp->obj_color = CLR_WHITE;
+						}
+					}
+					else {
+						(void)mongets(mtmp, CRYSTAL_HELM, mkobjflags);
+						(void)mongets(mtmp, JUMPSUIT, mkobjflags);
+						(void)mongets(mtmp, BODYGLOVE, mkobjflags);
+						otmp = mongets(mtmp, HIGH_BOOTS, mkobjflags);
+						if(otmp){
+							otmp->obj_color = CLR_WHITE;
+						}
+						otmp = mongets(mtmp, GLOVES, mkobjflags);
+						if(otmp){
+							otmp->obj_color = CLR_WHITE;
+						}
+					}
 				} else if(mm == PM_MYRKALFAR_WARRIOR){
+					mtmp->m_lev += rn2(6);
+					mtmp->mhp = mtmp->mhpmax = mtmp->m_lev*8 - 1;
 					otmp = mksobj(SNIPER_RIFLE, mkobjflags);
 					otmp->spe = 4;
+					otmp->cursed = FALSE; //Either uncurses or has no effect.
 					(void) mpickobj(mtmp, otmp);
 					
 					otmp = mksobj(BULLET, mkobjflags|MKOBJ_NOINIT);
 					otmp->spe = 0;
 					otmp->quan += 60;
 					otmp->owt = weight(otmp);
+					otmp->cursed = FALSE; //Either uncurses or has no effect.
 					(void) mpickobj(mtmp, otmp);
 					
 					otmp = mksobj(SILVER_BULLET, mkobjflags|MKOBJ_NOINIT);
 					otmp->spe = 3;
 					otmp->quan += 30;
 					otmp->owt = weight(otmp);
+					otmp->cursed = FALSE; //Either uncurses or has no effect.
 					(void) mpickobj(mtmp, otmp);
 					
 					otmp = mksobj(VIBROBLADE, mkobjflags);
 					otmp->spe = rn1(3,3);
 					otmp->ovar1 = 50 + d(5,10);
 					otmp->recharged = rn1(3,3);
+					otmp->cursed = FALSE; //Either uncurses or has no effect.
 					(void) mpickobj(mtmp, otmp);
 					
 					otmp = mksobj(find_signet_ring(), mkobjflags);
 					otmp->ohaluengr = TRUE;
 					otmp->oward = LAST_BASTION_SYMBOL;
+					otmp->cursed = FALSE; //Either uncurses or has no effect.
 					(void) mpickobj(mtmp, otmp);
 					
-					(void)mongets(mtmp, DROVEN_CLOAK, mkobjflags);
-					(void)mongets(mtmp, CRYSTAL_HELM, mkobjflags);
-					(void)mongets(mtmp, PLASTEEL_ARMOR, mkobjflags);
-					(void)mongets(mtmp, BODYGLOVE, mkobjflags);
-					(void)mongets(mtmp, ORIHALCYON_GAUNTLETS, mkobjflags);
-					(void)mongets(mtmp, ELVEN_BOOTS, mkobjflags);
+					otmp = mongets(mtmp, DROVEN_CLOAK, mkobjflags);
+					if(otmp){
+						otmp->spe = rn1(2,2);
+						otmp->cursed = FALSE; //Either uncurses or has no effect.
+					}
+					otmp = mongets(mtmp, CRYSTAL_HELM, mkobjflags);
+					if(otmp){
+						otmp->spe += rn2(3);
+						otmp->cursed = FALSE; //Either uncurses or has no effect.
+					}
+					otmp = mongets(mtmp, PLASTEEL_ARMOR, mkobjflags);
+					if(otmp){
+						otmp->spe += rn2(3);
+						otmp->cursed = FALSE; //Either uncurses or has no effect.
+					}
+					otmp = mongets(mtmp, BODYGLOVE, mkobjflags);
+					otmp = mongets(mtmp, ORIHALCYON_GAUNTLETS, mkobjflags);
+					if(otmp){
+						otmp->spe += rn2(3);
+						otmp->cursed = FALSE; //Either uncurses or has no effect.
+					}
+					otmp = mongets(mtmp, ELVEN_BOOTS, mkobjflags);
+					if(otmp){
+						otmp->spe += rn2(3);
+						otmp->cursed = FALSE; //Either uncurses or has no effect.
+					}
 				} else if(mm == PM_MYRKALFAR_MATRON){
+					mtmp->m_lev += rn2(6);
+					mtmp->mhp = mtmp->mhpmax = mtmp->m_lev*8 - 1;
 					struct obj *gem;
 					give_mintrinsic(mtmp, TELEPAT);
 					otmp = mksobj(ARM_BLASTER, mkobjflags);
 					otmp->spe = 4;
 					otmp->ovar1 = 50 + d(5,10);
 					otmp->recharged = 4;
+					otmp->cursed = FALSE; //Either uncurses or has no effect.
 					(void) mpickobj(mtmp, otmp);
 					
 					otmp = mksobj(LIGHTSABER, mkobjflags);
@@ -1779,21 +1841,27 @@ boolean goodequip;
 					obj_extract_self(gem);
 					gem = poly_obj(gem,!rn2(4) ? MORGANITE : !rn2(3) ? RUBY : rn2(2) ? GARNET : JASPER);
 					add_to_container(otmp, gem);
+					otmp->cursed = FALSE; //Either uncurses or has no effect.
 					(void) mpickobj(mtmp, otmp);
 					
 					otmp = mksobj(find_signet_ring(), mkobjflags);
 					otmp->ohaluengr = TRUE;
 					otmp->oward = LAST_BASTION_SYMBOL;
+					otmp->cursed = FALSE; //Either uncurses or has no effect.
 					(void) mpickobj(mtmp, otmp);
 					
-					(void)mongets(mtmp, CLOAK_OF_MAGIC_RESISTANCE, mkobjflags);
-					
+					otmp = mongets(mtmp, CLOAK_OF_MAGIC_RESISTANCE, mkobjflags);
+					if(otmp){
+						otmp->spe = 4;
+						otmp->cursed = FALSE; //Either uncurses or has no effect.
+					}
 					otmp = mongets(mtmp, DROVEN_PLATE_MAIL, mkobjflags);
 					if(otmp) {
 						otmp->ohaluengr = TRUE;
 						otmp->oward = LAST_BASTION_SYMBOL;
 						set_material_gm(otmp, PLASTIC);
 						otmp->obj_color = CLR_BLACK;
+						otmp->cursed = FALSE; //Either uncurses or has no effect.
 						otmp->spe = 8;
 					}
 					
@@ -1802,15 +1870,20 @@ boolean goodequip;
 						set_material_gm(otmp, PLASTIC);
 						otmp->obj_color = CLR_BLACK;
 						otmp->spe = 8;
+						otmp->cursed = FALSE; //Either uncurses or has no effect.
 					}
 					
 					otmp = mongets(mtmp, BODYGLOVE, mkobjflags);
-					if(otmp) otmp->spe = 4;
+					if(otmp){
+						otmp->spe = 4;
+						otmp->cursed = FALSE; //Either uncurses or has no effect.
+					}
 					
 					otmp = mksobj(GAUNTLETS_OF_DEXTERITY, mkobjflags);
 					if(otmp){
 						otmp->obj_color = CLR_BLACK;
 						otmp->spe = 8;
+						otmp->cursed = FALSE; //Either uncurses or has no effect.
 						(void) mpickobj(mtmp, otmp);
 					}
 
@@ -1818,11 +1891,12 @@ boolean goodequip;
 					if(otmp){
 						otmp->obj_color = CLR_BLACK;
 						otmp->spe = 8;
+						otmp->cursed = FALSE; //Either uncurses or has no effect.
 					}
 				} else if(Infuture && mm == PM_ELVENKING){ /* Give the elvenking in the quest a special setup */
 					struct obj *gem;
 					mtmp->m_lev += 7;
-					mtmp->mhpmax = mtmp->mhp = d((int)mtmp->m_lev, 8);
+					mtmp->mhp = mtmp->mhpmax = mtmp->m_lev*8 - 1;
 					
 					give_mintrinsic(mtmp, TELEPAT);
 					give_mintrinsic(mtmp, REGENERATION);
@@ -1836,36 +1910,57 @@ boolean goodequip;
 					obj_extract_self(gem);
 					gem = poly_obj(gem,!rn2(3) ? EMERALD : rn2(2) ? GREEN_FLUORITE : JADE);
 					add_to_container(otmp, gem);
+					bless(otmp);
 					(void) mpickobj(mtmp, otmp);
 					
 					otmp = mksobj(HAND_BLASTER, mkobjflags);
 					otmp->spe = 3;
 					otmp->ovar1 = 50 + d(5,10);
 					otmp->recharged = rnd(4);
+					bless(otmp);
 					(void) mpickobj(mtmp, otmp);
 					
 					otmp = mongets(mtmp, ELVEN_SHIELD, mkobjflags);
 					if(otmp){
 						set_material_gm(otmp, MITHRIL);
 						otmp->spe = 7;
+						bless(otmp);
 					}
 					
-					(void)mongets(mtmp, CLOAK_OF_MAGIC_RESISTANCE, mkobjflags);
+					otmp = mongets(mtmp, CLOAK_OF_MAGIC_RESISTANCE, mkobjflags);
+					if(otmp){
+						otmp->spe = 3;
+						bless(otmp);
+					}
 					otmp = mongets(mtmp, HIGH_ELVEN_PLATE, mkobjflags);
-					if(otmp) otmp->spe = 7;
-					
+					if(otmp){
+						otmp->spe = 7;
+						bless(otmp);
+					}
 					otmp = mongets(mtmp, HIGH_ELVEN_HELM, mkobjflags);
-					if(otmp) otmp->spe = 7;
-					
+					if(otmp){
+						otmp->spe = 7;
+						bless(otmp);
+					}
 					otmp = mongets(mtmp, BODYGLOVE, mkobjflags);
-					if(otmp) otmp->spe = 3;
+					if(otmp){
+						otmp->spe = 3;
+						bless(otmp);
+					}
 					
 					otmp = mksobj(GAUNTLETS_OF_DEXTERITY, mkobjflags);
-					otmp->spe = 7;
+					if(otmp){
+						set_material_gm(otmp, MITHRIL);
+						otmp->spe = 7;
+						bless(otmp);
+					}
 					(void) mpickobj(mtmp, otmp);
 					
 					otmp = mongets(mtmp, ELVEN_BOOTS, mkobjflags);
-					if(otmp) otmp->spe = 7;
+					if(otmp){
+						otmp->spe = 7;
+						bless(otmp);
+					}
 				} else if(In_mordor_quest(&u.uz) 
 					&& !In_mordor_forest(&u.uz)
 					&& !Is_ford_level(&u.uz)
@@ -1877,7 +1972,23 @@ boolean goodequip;
 					return;
 				} else {
 					if(Infuture){
-						if(rn2(10)){
+						if(in_mklev){
+							mtmp->m_lev = 4;
+							mtmp->mhpmax = 6*mtmp->m_lev;
+							(void)mongets(mtmp, CUTTING_LASER, mkobjflags);
+							(void)mongets(mtmp, CRYSTAL_HELM, mkobjflags);
+							(void)mongets(mtmp, JUMPSUIT, mkobjflags);
+							(void)mongets(mtmp, BODYGLOVE, mkobjflags);
+							otmp = mongets(mtmp, HIGH_BOOTS, mkobjflags);
+							if(otmp){
+								otmp->obj_color = CLR_WHITE;
+							}
+							otmp = mongets(mtmp, GLOVES, mkobjflags);
+							if(otmp){
+								otmp->obj_color = CLR_WHITE;
+							}
+						}
+						else if(rn2(10)){
 							(void) mongets(mtmp, ELVEN_CLOAK, mkobjflags);
 							(void) mongets(mtmp, ELVEN_TOGA, mkobjflags);
 							(void) mongets(mtmp, ELVEN_BOOTS, mkobjflags);
@@ -2018,6 +2129,22 @@ boolean goodequip;
 				if(otmp) otmp->obj_color = CLR_BLACK;
 				mongets(mtmp, WITCH_HAT, mkobjflags);
 				mongets(mtmp, QUARTERSTAFF, mkobjflags);
+			} else if (mm == PM_HUMAN){
+				if(Infuture){
+					mtmp->m_lev = 4;
+					mtmp->mhpmax = 6*mtmp->m_lev;
+					(void)mongets(mtmp, CRYSTAL_HELM, mkobjflags);
+					(void)mongets(mtmp, JUMPSUIT, mkobjflags);
+					(void)mongets(mtmp, BODYGLOVE, mkobjflags);
+					otmp = mongets(mtmp, HIGH_BOOTS, mkobjflags);
+					if(otmp){
+						otmp->obj_color = CLR_WHITE;
+					}
+					otmp = mongets(mtmp, GLOVES, mkobjflags);
+					if(otmp){
+						otmp->obj_color = CLR_WHITE;
+					}
+				}
 			} else if(mm >= PM_STUDENT && mm <= PM_APPRENTICE){
 				if(mm == PM_STUDENT){
 					(void)mongets(mtmp, PICK_AXE, mkobjflags);
@@ -2026,26 +2153,31 @@ boolean goodequip;
 					(void)mongets(mtmp, LOW_BOOTS, mkobjflags);
 					(void)mongets(mtmp, FEDORA, mkobjflags);
 				} else if (mm == PM_TROOPER){
+					mtmp->m_lev += rn2(6);
+					mtmp->mhp = mtmp->mhpmax = mtmp->m_lev*8 - 1;
 					if(!rn2(10)){
 						otmp = mksobj(ARM_BLASTER, mkobjflags);
 						if(otmp){
 							otmp->spe = 0;
 							otmp->ovar1 = d(5,10);
 							otmp->recharged = 4;
+							otmp->cursed = FALSE; //Either uncurses or has no effect.
 							(void) mpickobj(mtmp, otmp);
 						}
 						
 						otmp = mksobj(DISKOS, mkobjflags);
 						if(otmp){
 							otmp->spe = rn1(4,4);
+							bless(otmp);
 							(void) mpickobj(mtmp, otmp);
 						}
 						
 						otmp = mksobj(HAND_BLASTER, mkobjflags);
 						if(otmp){
-							otmp->spe = 0;
+							otmp->spe = rn1(4,4);
 							otmp->ovar1 = 50 + d(5,10);
 							otmp->recharged = rn1(2,2);
+							otmp->cursed = FALSE; //Either uncurses or has no effect.
 							(void) mpickobj(mtmp, otmp);
 						}
 						
@@ -2054,19 +2186,41 @@ boolean goodequip;
 							otmp->spe = rn1(2,2);
 							set_material_gm(otmp, PLASTIC);
 							otmp->obj_color = CLR_GRAY;
+							otmp->cursed = FALSE; //Either uncurses or has no effect.
 							(void) mpickobj(mtmp, otmp);
 						}
 						
-						(void)mongets(mtmp, CLOAK, mkobjflags);
+						otmp = mongets(mtmp, CLOAK, mkobjflags);
+						if(otmp){
+							otmp->obj_color = CLR_GRAY;
+							otmp->spe = rn1(4,4);
+							otmp->cursed = FALSE; //Either uncurses or has no effect.
+						}
 						otmp = mongets(mtmp, PLASTEEL_HELM, mkobjflags);
-						if(otmp) otmp->obj_color = CLR_GRAY;
+						if(otmp){
+							otmp->obj_color = CLR_GRAY;
+							otmp->spe = rn1(4,4);
+							otmp->cursed = FALSE; //Either uncurses or has no effect.
+						}
 						otmp = mongets(mtmp, PLASTEEL_ARMOR, mkobjflags);
-						if(otmp) otmp->obj_color = CLR_GRAY;
+						if(otmp){
+							otmp->obj_color = CLR_GRAY;
+							otmp->spe = rn1(4,4);
+							otmp->cursed = FALSE; //Either uncurses or has no effect.
+						}
 						(void)mongets(mtmp, BODYGLOVE, mkobjflags);
 						otmp = mongets(mtmp, PLASTEEL_GAUNTLETS, mkobjflags);
-						if(otmp) otmp->obj_color = CLR_GRAY;
+						if(otmp){
+							otmp->obj_color = CLR_GRAY;
+							otmp->spe = rn1(4,4);
+							otmp->cursed = FALSE; //Either uncurses or has no effect.
+						}
 						otmp = mongets(mtmp, PLASTEEL_BOOTS, mkobjflags);
-						if(otmp) otmp->obj_color = CLR_GRAY;
+						if(otmp){
+							otmp->obj_color = CLR_GRAY;
+							otmp->spe = rn1(4,4);
+							otmp->cursed = FALSE; //Either uncurses or has no effect.
+						}
 					}
 					else {
 						otmp = mksobj(ARM_BLASTER, mkobjflags);
@@ -2074,14 +2228,16 @@ boolean goodequip;
 							otmp->spe = 0;
 							otmp->ovar1 = d(5,10);
 							otmp->recharged = 4;
+							otmp->cursed = FALSE; //Either uncurses or has no effect.
 							(void) mpickobj(mtmp, otmp);
 						}
 						
-						otmp = mksobj(VIBROBLADE, mkobjflags);
+						otmp = mksobj(rn2(4) ? VIBROBLADE : FORCE_PIKE, mkobjflags);
 						if(otmp){
 							otmp->spe = rn1(3,3);
 							otmp->ovar1 = 50 + d(5,10);
 							otmp->recharged = rn1(3,3);
+							otmp->cursed = FALSE; //Either uncurses or has no effect.
 							(void) mpickobj(mtmp, otmp);
 						}
 						
@@ -2090,6 +2246,7 @@ boolean goodequip;
 							otmp->spe = 0;
 							otmp->ovar1 = 50 + d(5,10);
 							otmp->recharged = rn1(2,2);
+							otmp->cursed = FALSE; //Either uncurses or has no effect.
 							(void) mpickobj(mtmp, otmp);
 						}
 						
@@ -2098,15 +2255,40 @@ boolean goodequip;
 							otmp->spe = rn1(2,2);
 							set_material_gm(otmp, PLASTIC);
 							otmp->obj_color = CLR_WHITE;
+							otmp->cursed = FALSE; //Either uncurses or has no effect.
 							(void) mpickobj(mtmp, otmp);
 						}
 						
-						(void)mongets(mtmp, CLOAK, mkobjflags);
-						(void)mongets(mtmp, PLASTEEL_HELM, mkobjflags);
-						(void)mongets(mtmp, PLASTEEL_ARMOR, mkobjflags);
-						(void)mongets(mtmp, BODYGLOVE, mkobjflags);
-						(void)mongets(mtmp, PLASTEEL_GAUNTLETS, mkobjflags);
-						(void)mongets(mtmp, PLASTEEL_BOOTS, mkobjflags);
+						otmp = mongets(mtmp, CLOAK, mkobjflags);
+						if(otmp){
+							otmp->spe += rn2(3);
+							otmp->cursed = FALSE; //Either uncurses or has no effect.
+						}
+						otmp = mongets(mtmp, PLASTEEL_HELM, mkobjflags);
+						if(otmp){
+							otmp->spe += rn2(3);
+							otmp->cursed = FALSE; //Either uncurses or has no effect.
+						}
+						otmp = mongets(mtmp, PLASTEEL_ARMOR, mkobjflags);
+						if(otmp){
+							otmp->spe += rn2(3);
+							otmp->cursed = FALSE; //Either uncurses or has no effect.
+						}
+						otmp = mongets(mtmp, BODYGLOVE, mkobjflags);
+						if(otmp){
+							otmp->spe += rn2(3);
+							otmp->cursed = FALSE; //Either uncurses or has no effect.
+						}
+						otmp = mongets(mtmp, PLASTEEL_GAUNTLETS, mkobjflags);
+						if(otmp){
+							otmp->spe += rn2(3);
+							otmp->cursed = FALSE; //Either uncurses or has no effect.
+						}
+						otmp = mongets(mtmp, PLASTEEL_BOOTS, mkobjflags);
+						if(otmp){
+							otmp->spe += rn2(3);
+							otmp->cursed = FALSE; //Either uncurses or has no effect.
+						}
 					}
 				} else if (mm == PM_CHIEFTAIN){
 					(void)mongets(mtmp, rn2(2) ? TWO_HANDED_SWORD : BATTLE_AXE, mkobjflags);
@@ -4107,7 +4289,8 @@ boolean goodequip;
 						PM_BLACK_DRAGON, PM_COCKATRICE, PM_STORM_GIANT,
 						PM_MINOTAUR, PM_UMBER_HULK, PM_MASTER_MIND_FLAYER,
 						PM_IRON_GOLEM, PM_GREEN_SLIME, PM_GIANT_TURTLE,
-						PM_GREMLIN, PM_VAMPIRE_LORD, PM_ARCH_LICH,
+						PM_GREMLIN, PM_VAMPIRE_LORD, PM_VAMPIRE_LADY,
+						PM_ARCH_LICH,
 						PM_DISENCHANTER, PM_MANTICORE, PM_SCRAP_TITAN,
 						PM_GUG, PM_BEBELITH, PM_DAUGHTER_OF_BEDLAM,
 						PM_ANCIENT_NAGA,PM_GUARDIAN_NAGA, PM_SERPENT_NECKED_LIONESS, 
@@ -5228,6 +5411,11 @@ boolean goodequip;
 				(void) mongets(mtmp, rnd_attack_potion(mtmp), mkobjflags);
 				
 				if(mm == PM_MASTER_MIND_FLAYER || !rn2(3)) mongets(mtmp, R_LYEHIAN_FACEPLATE, mkobjflags);
+				
+				if(mm == PM_MASTER_MIND_FLAYER && !rn2(20))
+					 mongets(mtmp, CRYSTAL_SKULL, mkobjflags);
+				if(mm == PM_MIND_FLAYER && !rn2(60))
+					 mongets(mtmp, CRYSTAL_SKULL, mkobjflags);
 			} else if(Infuture){
 				if(mm == PM_MASTER_MIND_FLAYER){
 					struct obj *gem;
@@ -5283,6 +5471,8 @@ boolean goodequip;
 					(void) mpickobj(mtmp, otmp);
 					
 					mongets(mtmp, R_LYEHIAN_FACEPLATE, mkobjflags);
+					if(!rn2(3))
+						mongets(mtmp, CRYSTAL_SKULL, mkobjflags);
 				} else {
 					struct obj *gem;
 					give_mintrinsic(mtmp, POISON_RES);
@@ -5312,6 +5502,8 @@ boolean goodequip;
 					otmp->blessed = FALSE;
 					otmp->cursed = TRUE;
 					(void) mpickobj(mtmp, otmp);
+					if(!rn2(30))
+						mongets(mtmp, CRYSTAL_SKULL, mkobjflags);
 				}
 			} else {
 				mongets(mtmp, QUARTERSTAFF, mkobjflags);
@@ -5321,6 +5513,8 @@ boolean goodequip;
 				mongets(mtmp, LEATHER_HELM, mkobjflags);
 				if(mm == PM_MASTER_MIND_FLAYER && !rn2(3)) mongets(mtmp, R_LYEHIAN_FACEPLATE, mkobjflags);
 				else if(mm == PM_MIND_FLAYER && !rn2(20)) mongets(mtmp, R_LYEHIAN_FACEPLATE, mkobjflags);
+				if(mm == PM_MASTER_MIND_FLAYER && !rn2(90)) mongets(mtmp, CRYSTAL_SKULL, mkobjflags);
+				else if(mm == PM_MIND_FLAYER && !rn2(120)) mongets(mtmp, CRYSTAL_SKULL, mkobjflags);
 			}
 		} else if(mm == PM_GITHYANKI_PIRATE){
 			if(!rn2(40)){
@@ -5373,7 +5567,7 @@ boolean goodequip;
 			if(Infuture){
 				if(in_mklev){
 					mtmp->m_lev += 20;
-					mtmp->mhp = mtmp->mhpmax = d(mtmp->m_lev, 8);
+					mtmp->mhp = mtmp->mhpmax = mtmp->m_lev*8 - 1;
 					otmp = mksobj(ARM_BLASTER, mkobjflags);
 					if(otmp){
 						otmp->spe = 0;
@@ -5409,16 +5603,36 @@ boolean goodequip;
 						(void) mpickobj(mtmp, otmp);
 					}
 					
-					(void)mongets(mtmp, CLOAK, mkobjflags);
+					otmp = mongets(mtmp, DWARVISH_CLOAK, mkobjflags);
+					if(otmp){
+						otmp->spe = rn1(4,4);
+						otmp->cursed = FALSE; //Either uncurses or has no effect.
+					}
 					otmp = mongets(mtmp, PLASTEEL_HELM, mkobjflags);
-					if(otmp) otmp->obj_color = CLR_GRAY;
+					if(otmp){
+						otmp->obj_color = CLR_GRAY;
+						otmp->spe = rn1(4,4);
+						otmp->cursed = FALSE; //Either uncurses or has no effect.
+					}
 					otmp = mongets(mtmp, PLASTEEL_ARMOR, mkobjflags);
-					if(otmp) otmp->obj_color = CLR_GRAY;
+					if(otmp){
+						otmp->obj_color = CLR_GRAY;
+						otmp->spe = rn1(4,4);
+						otmp->cursed = FALSE; //Either uncurses or has no effect.
+					}
 					(void)mongets(mtmp, BODYGLOVE, mkobjflags);
 					otmp = mongets(mtmp, PLASTEEL_GAUNTLETS, mkobjflags);
-					if(otmp) otmp->obj_color = CLR_GRAY;
+					if(otmp){
+						otmp->obj_color = CLR_GRAY;
+						otmp->spe = rn1(4,4);
+						otmp->cursed = FALSE; //Either uncurses or has no effect.
+					}
 					otmp = mongets(mtmp, PLASTEEL_BOOTS, mkobjflags);
-					if(otmp) otmp->obj_color = CLR_GRAY;
+					if(otmp){
+						otmp->obj_color = CLR_GRAY;
+						otmp->spe = rn1(4,4);
+						otmp->cursed = FALSE; //Either uncurses or has no effect.
+					}
 				}
 				else {
 					(void)mongets(mtmp, SHOES, mkobjflags);
@@ -5701,8 +5915,10 @@ boolean goodequip;
 				if(ptr->mtyp == PM_THRIAE)
 				(void)mongets(mtmp, (rn2(2) ? FLUTE : HARP), mkobjflags);
 			} else if(ptr->mtyp == PM_INTONER){
+				int intoner_color = HI_GLASS;
 				switch(rn2(6)){
 					case 0:
+						intoner_color = CLR_GRAY;
 						otmp = mksobj(LONG_SWORD, mkobjflags|MKOBJ_NOINIT);
 						otmp->spe = 4;
 						set_material_gm(otmp, DRAGON_HIDE);
@@ -5717,10 +5933,12 @@ boolean goodequip;
 						(void) mpickobj(mtmp, otmp);
 						otmp = mksobj(LONG_GLOVES, mkobjflags|MKOBJ_NOINIT);
 						otmp->spe = 4;
+						otmp->obj_color = intoner_color;
 						add_oprop(otmp, OPROP_AXIO);
 						(void) mpickobj(mtmp, otmp);
 					break;
 					case 1:
+						intoner_color = CLR_WHITE;
 						otmp = mksobj(CHAKRAM, mkobjflags|MKOBJ_NOINIT);
 						otmp->objsize = MZ_HUGE;
 						otmp->spe = 4;
@@ -5736,10 +5954,12 @@ boolean goodequip;
 						(void) mpickobj(mtmp, otmp);
 						otmp = mksobj(LONG_GLOVES, mkobjflags|MKOBJ_NOINIT);
 						otmp->spe = 4;
+						otmp->obj_color = intoner_color;
 						add_oprop(otmp, OPROP_AXIO);
 						(void) mpickobj(mtmp, otmp);
 					break;
 					case 2:
+						intoner_color = CLR_BLUE;
 						otmp = mksobj(LONG_SWORD, mkobjflags|MKOBJ_NOINIT);
 						otmp->spe = 4;
 						set_material_gm(otmp, METAL);
@@ -5754,10 +5974,12 @@ boolean goodequip;
 						(void) mpickobj(mtmp, otmp);
 						otmp = mksobj(LONG_GLOVES, mkobjflags|MKOBJ_NOINIT);
 						otmp->spe = 4;
+						otmp->obj_color = intoner_color;
 						add_oprop(otmp, OPROP_AXIO);
 						(void) mpickobj(mtmp, otmp);
 					break;
 					case 3:
+						intoner_color = CLR_MAGENTA;
 						otmp = mksobj(SCIMITAR, mkobjflags|MKOBJ_NOINIT);
 						otmp->spe = 4;
 						set_material_gm(otmp, METAL);
@@ -5778,10 +6000,12 @@ boolean goodequip;
 						(void) mpickobj(mtmp, otmp);
 						otmp = mksobj(LONG_GLOVES, mkobjflags|MKOBJ_NOINIT);
 						otmp->spe = 4;
+						otmp->obj_color = intoner_color;
 						add_oprop(otmp, OPROP_AXIO);
 						(void) mpickobj(mtmp, otmp);
 					break;
 					case 4:
+						intoner_color = CLR_GREEN;
 						otmp = mksobj(GREEN_DRAGON_SCALE_MAIL, mkobjflags|MKOBJ_NOINIT);
 						otmp->spe = 4;
 						set_material_gm(otmp, GLASS);
@@ -5795,6 +6019,7 @@ boolean goodequip;
 						(void) mpickobj(mtmp, otmp);
 					break;
 					case 5:
+						intoner_color = CLR_YELLOW;
 						otmp = mksobj(TWO_HANDED_SWORD, mkobjflags|MKOBJ_NOINIT);
 						otmp->objsize = MZ_LARGE;
 						otmp->spe = 4;
@@ -5810,6 +6035,7 @@ boolean goodequip;
 						(void) mpickobj(mtmp, otmp);
 						otmp = mksobj(LONG_GLOVES, mkobjflags|MKOBJ_NOINIT);
 						otmp->spe = 4;
+						otmp->obj_color = intoner_color;
 						add_oprop(otmp, OPROP_AXIO);
 						(void) mpickobj(mtmp, otmp);
 					break;
@@ -5817,10 +6043,12 @@ boolean goodequip;
 				otmp = mksobj(HEELED_BOOTS, mkobjflags|MKOBJ_NOINIT);
 				otmp->spe = 4;
 				add_oprop(otmp, OPROP_AXIO);
+				otmp->obj_color = intoner_color;
 				(void) mpickobj(mtmp, otmp);
 				otmp = mksobj(WAR_HAT, mkobjflags|MKOBJ_NOINIT);
 				otmp->spe = 4;
 				set_material_gm(otmp, GLASS);
+				otmp->obj_color = intoner_color;
 				add_oprop(otmp, OPROP_AXIO);
 				add_oprop(otmp, OPROP_REFL);
 				fix_object(otmp);
@@ -6215,12 +6443,39 @@ boolean goodequip;
 								}
 							}
 							break;
-							case 5:
-								//Rakuyo
-								otmp = mksobj(RAKUYO, mkobjflags|MKOBJ_ARTIF);
-								otmp->spe = 2+rn2(3);
-								MAYBE_MERC(otmp)
-								(void) mpickobj(mtmp, otmp);
+							case 5:{
+								//Hunter
+								int weapon = rn2(3) ? RAKUYO : BLADE_OF_MERCY;
+								if(weapon == BLADE_OF_MERCY){
+									if(rn2(3)){
+										otmp = mksobj(BLADE_OF_MERCY, mkobjflags|MKOBJ_ARTIF);
+										otmp->spe = 5;
+										(void) mpickobj(mtmp, otmp);
+									}
+									else {
+										otmp = mksobj(BLADE_OF_PITY, mkobjflags|MKOBJ_ARTIF);
+										otmp->spe = 5;
+										(void) mpickobj(mtmp, otmp);
+										otmp = mksobj(BLADE_OF_GRACE, mkobjflags|MKOBJ_ARTIF);
+										otmp->spe = 5;
+										(void) mpickobj(mtmp, otmp);
+									}
+								}
+								else {
+									if(rn2(3)){
+										otmp = mksobj(RAKUYO, mkobjflags|MKOBJ_ARTIF);
+										otmp->spe = 5;
+										(void) mpickobj(mtmp, otmp);
+									}
+									else {
+										otmp = mksobj(RAKUYO_DAGGER, mkobjflags|MKOBJ_ARTIF);
+										otmp->spe = 5;
+										(void) mpickobj(mtmp, otmp);
+										otmp = mksobj(RAKUYO_SABER, mkobjflags|MKOBJ_ARTIF);
+										otmp->spe = 5;
+										(void) mpickobj(mtmp, otmp);
+									}
+								}
 
 								otmp = mksobj(RUFFLED_SHIRT, mkobjflags|MKOBJ_ARTIF);
 								otmp->spe = 0+rn2(4);
@@ -6243,6 +6498,15 @@ boolean goodequip;
 
 								otmp = mongets(mtmp, BUCKLER, mkobjflags|MKOBJ_ARTIF);
 								if(otmp) otmp->spe = 1+rn2(3);
+								
+								if(weapon == BLADE_OF_MERCY){
+									otmp = mongets(mtmp, MASK, mkobjflags|MKOBJ_ARTIF);
+									if(otmp){
+										otmp->corpsenm = PM_CROW;
+										set_material_gm(otmp, METAL);
+									}
+								}
+							}
 							break;
 							case 6:{
 								//Club-claw
@@ -6769,37 +7033,44 @@ boolean goodequip;
 			otmp->spe = 8;
 			otmp->ovar1 = 50 + d(5,10);
 			otmp->recharged = rn2(3);
+			bless(otmp);
 			(void) mpickobj(mtmp, otmp);
 			
 			otmp = mksobj(find_signet_ring(), mkobjflags);
 			otmp->ohaluengr = TRUE;
 			otmp->oward = LAST_BASTION_SYMBOL;
+			bless(otmp);
 			(void) mpickobj(mtmp, otmp);
 			
 			otmp = mongets(mtmp, CLOAK_OF_MAGIC_RESISTANCE, mkobjflags);
 			if(otmp){
 				otmp->obj_color = CLR_RED;
 				otmp->spe = 4;
+				bless(otmp);
 			}
 			otmp = mongets(mtmp, PLASTEEL_HELM, mkobjflags);
 			if(otmp){
 				otmp->obj_color = CLR_RED;
 				otmp->spe = 4;
+				bless(otmp);
 			}
 			otmp = mongets(mtmp, PLASTEEL_ARMOR, mkobjflags);
 			if(otmp){
 				otmp->obj_color = CLR_RED;
 				otmp->spe = 4;
+				bless(otmp);
 			}
 			otmp = mongets(mtmp, BODYGLOVE, mkobjflags);
 			if(otmp){
 				otmp->spe = 4;
+				bless(otmp);
 			}
 			otmp = mongets(mtmp, GAUNTLETS_OF_POWER, mkobjflags);
 			if(otmp){
 				set_material_gm(otmp, PLASTIC);
 				otmp->obj_color = CLR_RED;
 				otmp->spe = 4;
+				bless(otmp);
 			}
 		}
 		if (rn2(2)) {
@@ -6886,13 +7157,13 @@ boolean goodequip;
 					}
 					else {
 						if(mtmp->female){
-							(void) mongets(mtmp, rn2(20) ? SPEAR : LONG_SWORD, mkobjflags);
+							(void) mongets(mtmp, STILETTO, mkobjflags);
 							(void) mongets(mtmp, LEATHER_ARMOR, mkobjflags);
 							(void) mongets(mtmp, GLOVES, mkobjflags);
 							(void) mongets(mtmp, LOW_BOOTS, mkobjflags);
 						}
 						else {
-							(void) mongets(mtmp, STILETTO, mkobjflags);
+							(void) mongets(mtmp, rn2(20) ? SPEAR : LONG_SWORD, mkobjflags);
 							(void) mongets(mtmp, LEATHER_ARMOR, mkobjflags);
 							(void) mongets(mtmp, GLOVES, mkobjflags);
 							(void) mongets(mtmp, LOW_BOOTS, mkobjflags);
@@ -6914,7 +7185,7 @@ boolean goodequip;
 							otmp->spe = 7;
 							curse(otmp);
 							add_oprop(otmp, OPROP_UNHYW);
-							add_oprop(otmp, OPROP_PHSEW);
+							if(!rn2(4)) add_oprop(otmp, OPROP_PHSEW);
 						}
 
 						otmp = mongets(mtmp, ARCHAIC_BOOTS, mkobjflags);
@@ -6931,34 +7202,57 @@ boolean goodequip;
 						if(otmp) otmp->spe = rn1(4,3);
 					}
 					else {
-						if(mtmp->female){
-							(void) mongets(mtmp, rn2(2) ? STILETTO : RAPIER, mkobjflags);
-							(void) mongets(mtmp, GENTLEWOMAN_S_DRESS, mkobjflags);
-							if(!rn2(20)) mongets(mtmp, VICTORIAN_UNDERWEAR, mkobjflags);
-							if(!rn2(100)) mongets(mtmp, find_opera_cloak(), mkobjflags);
-							(void) mongets(mtmp, GLOVES, mkobjflags);
-							(void) mongets(mtmp, rn2(2) ? STILETTOS : LOW_BOOTS, mkobjflags);
+						/* Knight */
+						if(!rn2(4)){
+							(void) mongets(mtmp, LONG_SWORD, mkobjflags);
+							(void) mongets(mtmp, PLATE_MAIL, mkobjflags);
+							if(!rn2(20)) mongets(mtmp, RUFFLED_SHIRT, mkobjflags);
+							if(!rn2(20)) mongets(mtmp, find_opera_cloak(), mkobjflags);
+							(void) mongets(mtmp, rn2(2) ? GAUNTLETS : GLOVES, mkobjflags);
+							(void) mongets(mtmp, rn2(2) ? ARMORED_BOOTS : HIGH_BOOTS, mkobjflags);
 						}
+						/* Noble */
 						else {
-							/* Knight */
-							if(!rn2(4)){
-								(void) mongets(mtmp, LONG_SWORD, mkobjflags);
-								(void) mongets(mtmp, PLATE_MAIL, mkobjflags);
-								if(!rn2(20)) mongets(mtmp, RUFFLED_SHIRT, mkobjflags);
-								if(!rn2(20)) mongets(mtmp, find_opera_cloak(), mkobjflags);
-								(void) mongets(mtmp, rn2(2) ? GAUNTLETS : GLOVES, mkobjflags);
-								(void) mongets(mtmp, rn2(2) ? ARMORED_BOOTS : HIGH_BOOTS, mkobjflags);
-							}
-							/* Noble */
-							else {
-								(void) mongets(mtmp, rn2(2) ? LONG_SWORD : RAPIER, mkobjflags);
-								(void) mongets(mtmp, GENTLEMAN_S_SUIT, mkobjflags);
-								if(!rn2(20)) mongets(mtmp, RUFFLED_SHIRT, mkobjflags);
-								if(!rn2(20)) mongets(mtmp, find_opera_cloak(), mkobjflags);
-								(void) mongets(mtmp, GLOVES, mkobjflags);
-								(void) mongets(mtmp, rn2(2) ? HIGH_BOOTS : LOW_BOOTS, mkobjflags);
-							}
+							(void) mongets(mtmp, rn2(2) ? LONG_SWORD : RAPIER, mkobjflags);
+							(void) mongets(mtmp, GENTLEMAN_S_SUIT, mkobjflags);
+							if(!rn2(20)) mongets(mtmp, RUFFLED_SHIRT, mkobjflags);
+							if(!rn2(20)) mongets(mtmp, find_opera_cloak(), mkobjflags);
+							(void) mongets(mtmp, GLOVES, mkobjflags);
+							(void) mongets(mtmp, rn2(2) ? HIGH_BOOTS : LOW_BOOTS, mkobjflags);
 						}
+					}
+				break;
+				case PM_VAMPIRE_LADY:
+					if(Infuture){
+						otmp = mongets(mtmp, ARCHAIC_BOOTS, mkobjflags);
+						if(otmp) otmp->spe = rn1(4,3);
+						otmp = mongets(mtmp, mtmp->female ? VICTORIAN_UNDERWEAR : RUFFLED_SHIRT, mkobjflags);
+						if(otmp) otmp->spe = rn1(4,3);
+						otmp = mongets(mtmp, NOBLE_S_DRESS, mkobjflags);
+						if(otmp){
+							otmp->spe = rn1(4,3);
+							set_material_gm(otmp, COPPER);
+						}
+						otmp = mongets(mtmp, find_opera_cloak(), mkobjflags);
+						if(otmp) otmp->spe = rn1(4,3);
+						otmp = mongets(mtmp, ARCHAIC_GAUNTLETS, mkobjflags);
+						if(otmp) otmp->spe = rn1(4,3);
+						otmp = mongets(mtmp, ARCHAIC_HELM, mkobjflags);
+						if(otmp) otmp->spe = rn1(4,3);
+					}
+					else {
+						otmp = mongets(mtmp, FEDORA, mkobjflags);
+						if(otmp)
+							otmp->obj_color = CLR_WHITE;
+						otmp = mongets(mtmp, GENTLEWOMAN_S_DRESS, mkobjflags);
+						if(otmp)
+							otmp->obj_color = CLR_WHITE;
+						if(!rn2(20)) mongets(mtmp, VICTORIAN_UNDERWEAR, mkobjflags);
+						if(!rn2(100)) mongets(mtmp, find_opera_cloak(), mkobjflags);
+						otmp = mongets(mtmp, GLOVES, mkobjflags);
+						if(otmp)
+							otmp->obj_color = CLR_WHITE;
+						(void) mongets(mtmp, rn2(2) ? STILETTOS : LOW_BOOTS, mkobjflags);
 					}
 				break;
 				case PM_MINA_HARKER:
@@ -8957,7 +9251,7 @@ boolean goodequip;
 				}
 			} else if(Infuture){
 				otmp = mksobj(QUARTERSTAFF, mkobjflags);
-				otmp->spe = 9;
+				otmp->spe = 7;
 				add_oprop(otmp, OPROP_PSIOW);
 				add_oprop(otmp, OPROP_PHSEW);
 				add_oprop(otmp, OPROP_WATRW);
@@ -8974,25 +9268,25 @@ boolean goodequip;
 				otmp->oerodeproof = 1;
 				otmp->quan = 18;
 				otmp->owt = weight(otmp);
-				otmp->spe = 9;
+				otmp->spe = 7;
 				otmp->objsize = MZ_HUGE;
 				fix_object(otmp);
 				(void) mpickobj(mtmp, otmp);
 				
 				otmp = mksobj(PLATE_MAIL, mkobjflags);
-				otmp->spe = 9;
+				otmp->spe = 5;
 				otmp->objsize = MZ_HUGE;
 				set_material_gm(otmp, GOLD);
 				fix_object(otmp);
 				(void) mpickobj(mtmp,otmp);
 				otmp = mksobj(GAUNTLETS, mkobjflags);
-				otmp->spe = 9;
+				otmp->spe = 5;
 				otmp->objsize = MZ_HUGE;
 				set_material_gm(otmp, GOLD);
 				fix_object(otmp);
 				(void) mpickobj(mtmp,otmp);
 				otmp = mksobj(ARMORED_BOOTS, mkobjflags);
-				otmp->spe = 9;
+				otmp->spe = 5;
 				otmp->objsize = MZ_HUGE;
 				set_material_gm(otmp, GOLD);
 				fix_object(otmp);
@@ -9081,35 +9375,39 @@ boolean goodequip;
 			}
 		} else if(ptr->mtyp == PM_LURKING_ONE) {
 			int i;
-			long long oprop;
-			switch(rnd(20)){
+			long long oprop = 0;
+			int spe = rn2(4);
+			if(!rn2(20)) switch(rnd(10)){
 				case 1:
+				case 2:
 					oprop = OPROP_ELECW;
 				break;
-				case 2:
+				case 3:
 					oprop = OPROP_ACIDW;
 				break;
-				case 3:
-					oprop = OPROP_MAGCW;
-				break;
 				case 4:
-					oprop = OPROP_WATRW;
-				break;
 				case 5:
 				case 6:
+					oprop = OPROP_MAGCW;
+				break;
 				case 7:
+					oprop = OPROP_WATRW;
+				break;
+				case 8:
+				case 9:
+				case 10:
 					oprop = OPROP_PSIOW;
 				break;
-				default:
-					oprop = 0;
-				break;
 			}
+			if(!oprop && !rn2(10))
+				spe = 10;
 			for(i = 2; i > 0; i--){
 				otmp = mksobj(CLUB, mkobjflags|MKOBJ_NOINIT);
 				set_material_gm(otmp, BONE);
 				add_oprop(otmp, OPROP_CCLAW);
 				add_oprop(otmp, oprop);
 				otmp->objsize = mtmp->data->msize;
+				otmp->spe = spe;
 				fix_object(otmp);
 				(void) mpickobj(mtmp, otmp);
 			}
@@ -10955,7 +11253,7 @@ boolean randmonst;
 			mkmon_template = CRANIUM_RAT;
 		}
 		/* insight check: making yith */
-		else if(randmonst && check_insight()){
+		else if(randmonst && check_insight() && (level_difficulty()+u.ulevel)/2+5 > monstr[PM_DEMILICH]){
 			mkmon_template = YITH;
 		}
 		/* most general case at bottom -- creatures randomly being zombified */
@@ -11100,6 +11398,8 @@ struct monst * mon;
 	int out_faction = 0;
 	
 	if(Infuture && !peaceful)
+		out_faction = ILSENSINE_FACTION;
+	else if(is_mind_flayer(mon->data))
 		out_faction = ILSENSINE_FACTION;
 	else if(In_quest(&u.uz) && Role_if(PM_EXILE) && !peaceful)
 		out_faction = SEROPAENES_FACTION;
@@ -11401,6 +11701,7 @@ int faction;
 		add_mx(mtmp, MX_ESUM);
 		mtmp->mextra_p->esum_p->summoner = (struct monst *)0;
 		mtmp->mextra_p->esum_p->sm_id = 0;
+		mtmp->mextra_p->esum_p->sm_o_id = 0;
 		mtmp->mextra_p->esum_p->summonstr = 0;
 		mtmp->mextra_p->esum_p->staleptr = 0;
 		mtmp->mextra_p->esum_p->permanent = 1;
@@ -11534,6 +11835,11 @@ int faction;
 	
 	else if(mtmp->mtyp == PM_POLYPOID_BEING)
 		mtmp->m_insight_level = 40;
+
+	else if(mtmp->mtyp == PM_APHANACTONAN_AUDIENT)
+		mtmp->m_insight_level = rnd(8);
+	else if(mtmp->mtyp == PM_APHANACTONAN_ASSESSOR)
+		mtmp->m_insight_level = 16+d(4,4);
 	
 	if(mtmp->mtyp == PM_CHOKHMAH_SEPHIRAH)
 		mtmp->m_lev += u.chokhmah;
@@ -11837,7 +12143,7 @@ int faction;
 							tmpm = makemon_full(&mons[PM_EMBRACED_DROWESS], mtmp->mx, mtmp->my, MM_ADJACENTOK, template, faction);
 							if(tmpm) m_initsgrp(tmpm, mtmp->mx, mtmp->my);
 							tmpm = makemon_full(&mons[PM_MIND_FLAYER], mtmp->mx, mtmp->my, MM_ADJACENTOK, template, faction);
-							if(tmpm) m_initlgrp(tmpm, mtmp->mx, mtmp->my);
+							if(tmpm) m_initsgrp(tmpm, mtmp->mx, mtmp->my);
 							tmpm = makemon_full(&mons[PM_EDDERKOP], mtmp->mx, mtmp->my, MM_ADJACENTOK, template, faction);
 							if(tmpm) m_initlgrp(tmpm, mtmp->mx, mtmp->my);
 							tmpm = makemon_full(&mons[PM_HEDROW_ZOMBIE], mtmp->mx, mtmp->my, MM_ADJACENTOK, template, faction);
@@ -11892,11 +12198,10 @@ int faction;
 				}
 				if(Infuture){
 					if (mndx == PM_MIND_FLAYER){
-						m_initlgrp(mtmp, mtmp->mx, mtmp->my);
+						m_initsgrp(mtmp, mtmp->mx, mtmp->my);
 					}
 					if (mndx == PM_MASTER_MIND_FLAYER){
-						m_initsgrp(mtmp, mtmp->mx, mtmp->my);
-						for(num = rn1(5,4); num >= 0; num--) makemon_full(&mons[PM_MIND_FLAYER], mtmp->mx, mtmp->my, MM_ADJACENTOK, template, faction);
+						for(num = d(2,3); num >= 0; num--) makemon_full(&mons[PM_MIND_FLAYER], mtmp->mx, mtmp->my, MM_ADJACENTOK|MM_NOGROUP, template, faction);
 					}
 				}
 			}
@@ -13603,7 +13908,7 @@ struct monst *mtmp, *victim;
 	    // if (mtmp->mhpmax + max_increase > hp_threshold + 1)
 			// max_increase = max((hp_threshold + 1) - mtmp->mhpmax, 0);
 	    // cur_increase = (max_increase > 0) ? rn2(max_increase)+1 : 0;
-		if(mtmp->mhpmax < hp_threshold-8 || mtmp->m_lev < victim->m_lev + d(2,5)){ /*allow monsters to quickly gain hp up to around their HP limit*/
+		if(mtmp->mhpmax < hp_threshold-8 || mtmp->m_lev < victim->m_lev + (d(2,5) + heal_mlevel_bonus())){ /*allow monsters to quickly gain hp up to around their HP limit*/
 			max_increase = 1;
 			cur_increase = 1;
 			if(Role_if(PM_BARD) && mtmp->mtame && canseemon(mtmp)){
@@ -14167,9 +14472,9 @@ struct monst *mtmp;
 			mtmp->malign = -3*max(3,absmal);
 		else	/* renegade */
 			mtmp->malign = max(3,absmal);
-	} else{	/* not coaligned and therefore hostile */
+	} else {	/* not coaligned and therefore hostile */
 		//Neutral murder bugfix: neutral murderables should be worth 1 algnment if hostile.
-		if (!mal && is_human(mtmp->data) && !always_hostile(mtmp->data) && !mtmp->mpeaceful)
+		if (!mal && murderable_mon(mtmp))
 			mtmp->malign = 1;
 		else
 			mtmp->malign = abs(mal);
@@ -14430,6 +14735,9 @@ struct monst *mon;
 
 	if (mon->ispolyp) lev_limit = max(lev_limit, 30);
 	
+	if(Role_if(PM_HEALER) && mon->mtame && lev_limit < 49)
+		lev_limit = min_ints(49, lev_limit + heal_mlevel_bonus());
+
 	return lev_limit;
 }
 #endif /* OVLB */

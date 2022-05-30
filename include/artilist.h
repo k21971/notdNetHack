@@ -490,7 +490,7 @@ A("Staff of Necromancy", QUARTERSTAFF,					"skull-topped %s",
 /*Needs encyc entry?*/
 /*provides curse res while wielded */
 A("Magicbane",			ATHAME,							"mystically runed %s",
-	3500L, MT_DEFAULT, MZ_DEFAULT, WT_DEFAULT,
+	3500L, METAL, MZ_DEFAULT, WT_DEFAULT,
 	A_NEUTRAL, PM_WIZARD, NON_PM, TIER_B, (ARTG_GIFT),
 	NO_MONS(),
 	ATTK(AD_MAGM, 3, 4), (ARTA_MAGIC),
@@ -768,7 +768,7 @@ A("The Holy Moonlight Sword",	LONG_SWORD,				(const char *)0, // begging for a d
 	ATTK(AD_PHYS, 12, 0), NOFLAG,
 	PROPS(), NOFLAG,
 	PROPS(), NOFLAG,
-	ENLIGHTENING, NOFLAG
+	ENLIGHTENING, (ARTI_PLUSTEN)
 	),
 
 /* can be transformed by offering your blood */
@@ -781,7 +781,7 @@ A("Bloodletter",	MORNING_STAR,				(const char *)0,
 	ATTK(AD_BLUD, 8, 12), NOFLAG,
 	PROPS(), NOFLAG,
 	PROPS(), NOFLAG,
-	BLOODLETTER, NOFLAG
+	BLOODLETTER, (ARTI_PLUSTEN)
 	),
 
 /*Needs encyc entry*/
@@ -2130,7 +2130,7 @@ A("Idol of Bokrug, the water-lizard",		STATUE,	"sea-green stone likeness of a wa
 	NOINVOKE, NOFLAG
 	),
 
-A("The Star of Hypernotus",		AMULET_VERSUS_CURSES,	"blue-green star-shaped stone",
+A("The Star of Hypernotus",		AMULET_VERSUS_CURSES,	"blue-green star-shaped %s",
 	2500L, GEMSTONE, MZ_DEFAULT, WT_DEFAULT,
 	A_NEUTRAL, PM_MADMAN, NON_PM, TIER_S, (ARTG_NOGEN|ARTG_NOWISH|ARTG_MAJOR),
 	NO_MONS(),
@@ -2688,7 +2688,7 @@ A("Snickersnee",					KNIFE,				(const char *)0,
 /*Needs encyc entry*/
 /*heavier than normal, and causes spell penalties*/
 A("The Platinum Dragon Plate",		SILVER_DRAGON_SCALE_MAIL,			(const char *)0,
-	9000L, PLATINUM, MZ_DEFAULT, 225,
+	9000L, MT_DEFAULT, MZ_DEFAULT, WT_SPECIAL,
 	A_NONE, NON_PM, NON_PM, TIER_S, (ARTG_NOGEN|ARTG_NOWISH),
 	NO_MONS(),
 	NO_ATTK(), NOFLAG,
@@ -2700,7 +2700,7 @@ A("The Platinum Dragon Plate",		SILVER_DRAGON_SCALE_MAIL,			(const char *)0,
 /*Needs encyc entry*/
 /*heavier than normal */
 A("The Chromatic Dragon Scales",	BLACK_DRAGON_SCALES,			(const char *)0,
-	9000L, MT_DEFAULT, MZ_DEFAULT, 225,
+	9000L, MT_DEFAULT, MZ_DEFAULT, WT_DEFAULT,
 	A_NONE, NON_PM, NON_PM, TIER_S, (ARTG_NOGEN|ARTG_NOWISH),
 	NO_MONS(),
 	NO_ATTK(), NOFLAG,
@@ -3729,15 +3729,13 @@ A("Narya",								RIN_TELEPORT_CONTROL,	/* gold */			(const char *)0,
 	FIRE_BLAST, NOFLAG
 	),
 
-/* TODO water walking */
-/* TODO protect inventory from water damage */
 /* TODO name by appearance */
 A("Nenya",								RIN_TELEPORTATION,	/* silver */			(const char *)0,
 	0L, MT_DEFAULT, MZ_DEFAULT, WT_DEFAULT,
 	A_NONE, NON_PM, PM_ELF, NO_TIER, (ARTG_NOGEN|ARTG_NOWISH),
 	MONS(vsMA(MA_ORC)),
 	NO_ATTK(), NOFLAG,
-	PROPS(), NOFLAG,
+	PROPS(WATERPROOF,WWALKING), NOFLAG,
 	PROPS(WARN_OF_MON), NOFLAG,
 	NOINVOKE, NOFLAG
 	),

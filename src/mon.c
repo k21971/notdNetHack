@@ -150,6 +150,7 @@ int mndx;
 	case PM_ELF_MUMMY:	mndx = PM_ELF;  break;
 	case PM_VAMPIRE:
 	case PM_VAMPIRE_LORD:
+	case PM_VAMPIRE_LADY:
 #if 0	/* DEFERRED */
 	case PM_VAMPIRE_MAGE:
 #endif
@@ -373,6 +374,7 @@ register struct monst *mtmp;
 	    case PM_BLUE_DRAGON:
 	    case PM_GREEN_DRAGON:
 	    case PM_YELLOW_DRAGON:
+	    case PM_DEEP_DRAGON:
 		/* Make dragon scales.  This assumes that the order of the */
 		/* dragons is the same as the order of the scales.	   */
 		if (!rn2(mtmp->mrevived ? 20 : 3)) {
@@ -596,6 +598,7 @@ register struct monst *mtmp;
 		goto default_1;
 	    case PM_VAMPIRE:
 	    case PM_VAMPIRE_LORD:
+	    case PM_VAMPIRE_LADY:
 		/* include mtmp in the mkcorpstat() call */
 		if(mtmp->mpetitioner 
 			&& !is_rider(mtmp->data) 
@@ -782,6 +785,37 @@ register struct monst *mtmp;
 				set_material_gm(obj, IRON);
 			}
 			rem_mx(mtmp, MX_ENAM);
+		break;
+	    case PM_APHANACTONAN_AUDIENT:
+			obj = mksobj_at(CLOCKWORK_COMPONENT, x, y, NO_MKOBJ_FLAGS);
+			obj->quan = d(2,4);
+			obj->owt = weight(obj);
+			rem_mx(mtmp, MX_ENAM);
+			if(!rn2(20))
+				obj = mksobj_at(UPGRADE_KIT, x, y, NO_MKOBJ_FLAGS);
+			obj = mksobj_at(APHANACTONAN_RECORD, x, y, NO_MKOBJ_FLAGS);
+		break;
+	    case PM_APHANACTONAN_ASSESSOR:
+			obj = mksobj_at(CLOCKWORK_COMPONENT, x, y, NO_MKOBJ_FLAGS);
+			obj->quan = d(4,8);
+			obj->owt = weight(obj);
+			rem_mx(mtmp, MX_ENAM);
+			obj = mksobj_at(UPGRADE_KIT, x, y, NO_MKOBJ_FLAGS);
+			num = d(4,4);
+			while (num--){
+				obj = mksobj_at(EYEBALL, x, y, MKOBJ_NOINIT);
+				obj->corpsenm = PM_BEHOLDER;
+			}
+			num = d(2,4);
+			while(num--){
+				obj = mksobj_at(ARCHAIC_PLATE_MAIL, x, y, NO_MKOBJ_FLAGS);
+				set_material_gm(obj, COPPER);
+				obj->spe = 4;
+			}
+			obj = mksobj_at(CORPSE, x, y, NO_MKOBJ_FLAGS);
+			obj->corpsenm = PM_FLOATING_EYE;
+			fix_object(obj);
+			obj = mksobj_at(APHANACTONAN_ARCHIVE, x, y, NO_MKOBJ_FLAGS);
 		break;
 	    case PM_PARASITIZED_DOLL:
 			num = d(2,4);
@@ -1848,7 +1882,10 @@ movemon()
 			else continue;
 		}
 		//else no quant lock
-		
+	}
+	
+	if(Nightmare && mon_can_see_you(mtmp)){
+		you_inflict_madness(mtmp);
 	}
 	
 	if(mtmp->mtyp == PM_METROID_QUEEN){
@@ -2748,7 +2785,7 @@ struct obj *otmp;
 	if (mtmp == u.usteed) return (FALSE);
 #endif
 	if (mtmp->isshk) return(TRUE); /* no limit */
-	if ((mtmp->mpeaceful && mtmp->mtyp != PM_MAID) && !mtmp->mtame) return(FALSE);
+	if ((mtmp->mpeaceful && mtmp->mtyp != PM_MAID && !(Infuture && mtmp->mfaction == QUEST_FACTION)) && !mtmp->mtame) return(FALSE);
 	/* otherwise players might find themselves obligated to violate
 	 * their alignment if the monster takes something they need
 	 * 
@@ -3214,10 +3251,10 @@ struct monst * mdef;	/* another monster which is next to it */
 	}
 #ifdef ATTACK_PETS
     // pets attack hostile monsters
-	if (magr->mtame && !mdef->mpeaceful && magr->mhp > magr->mhpmax/2)
+	if (magr->mtame && !mdef->mpeaceful && (magr->mhp > magr->mhpmax/2 || banish_kill(magr->mtyp)))
 	    return ALLOW_M|ALLOW_TM;
 	// and vice versa, with some limitations that will help your pet survive
-	if (mdef->mtame && !magr->mpeaceful && mdef->mhp > mdef->mhpmax/2 && !mdef->meating && mdef != u.usteed && !mdef->mflee)
+	if (mdef->mtame && !magr->mpeaceful && (mdef->mhp > mdef->mhpmax/2 || banish_kill(mdef->mtyp)) && !mdef->meating && mdef != u.usteed && !mdef->mflee)
 	    return ALLOW_M|ALLOW_TM;
 #endif /* ATTACK_PETS */
 
@@ -3842,6 +3879,8 @@ struct monst *mtmp;
 						verbalize("**ALAAAAAAAAAAAAAAAAA:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...**");
 					}
 					set_mon_data(mtmp, PM_COILING_BRAWN);
+					possibly_unwield(mtmp, FALSE);	/* might lose use of weapon */
+					mon_break_armor(mtmp, FALSE);
 				break;
 				case 1:{
 					struct obj *helm, *robe;
@@ -3868,6 +3907,8 @@ struct monst *mtmp;
 						pline("%s head splits open in a profusion of fungal growthes!", s_suffix(Monnam(mtmp)));
 					else You_hear("a wet crack.");
 					set_mon_data(mtmp, PM_FUNGAL_BRAIN);
+					possibly_unwield(mtmp, FALSE);	/* might lose use of weapon */
+					mon_break_armor(mtmp, FALSE);
 				break;
 				case 3:
 					if(canseemon(mtmp)){
@@ -4390,6 +4431,7 @@ int adtyp;
 	switch(mdat->mtyp){
 		case PM_GAS_SPORE:
 		case PM_DUNGEON_FERN_SPORE:
+		case PM_APHANACTONAN_AUDIENT:
 			return EXPL_NOXIOUS;
 		case PM_SWAMP_FERN_SPORE:
 			return EXPL_MAGICAL;
@@ -4494,7 +4536,6 @@ boolean was_swallowed;			/* digestion */
 					} 
 					else if (canseemon(magr)) pline("%s seems to have indigestion.", Monnam(magr));
 				}
-			
 				return FALSE;
 			}
 			
@@ -4598,6 +4639,10 @@ boolean was_swallowed;			/* digestion */
 					scatter_item(otmp);
 					otmp = mkobj(RING_CLASS,FALSE);
 					scatter_item(otmp);
+					otmp = mkobj(CANDY_BAR,NO_MKOBJ_FLAGS);
+					scatter_item(otmp);
+					otmp = mkobj(POT_BOOZE,NO_MKOBJ_FLAGS);
+					scatter_item(otmp);
 				}
 				for(i = 0; i < 30; i++){
 					otmp = mkobj(FOOD_CLASS,FALSE);
@@ -4647,7 +4692,10 @@ boolean was_swallowed;			/* digestion */
 						mon_expl_color(mdat, mdat->mattk[i].adtyp), 
 						1);
 			}
-	    	if(mdat->mtyp == PM_GARO_MASTER || mdat->mtyp == PM_GARO) return (TRUE);
+	    	if(mdat->mtyp == PM_GARO_MASTER
+				|| mdat->mtyp == PM_GARO
+				|| mdat->mtyp == PM_APHANACTONAN_AUDIENT
+			) return (TRUE);
 			else return (FALSE);
 	    } //End AT_BOOM != AD_HLBD && != AD_POSN
 		else if(mdat->mattk[i].adtyp == AD_HLBD && mdat->mtyp == PM_ASMODEUS){
@@ -4734,8 +4782,7 @@ boolean was_swallowed;			/* digestion */
 //			The dungeon of ill regard, where Axus is found, now spawns only Modrons.  So this is uneeded
 //			for(quincount;quincount<7;quincount++) makemon(&mons[PM_QUINON], mon->mx, mon->my,MM_ADJACENTOK|MM_ANGRY);
 		}
-		else if(mdat->mattk[i].adtyp == AD_GROW || (mdat->mtyp==PM_QUINON 
-		        && mdat->mattk[i].adtyp == AD_STUN)){//horrid quinon kludge
+		else if(mdat->mattk[i].adtyp == AD_GROW){
 			struct monst *mtmp;
 			struct monst * axus = (struct monst *)0;
 			boolean found;
@@ -4749,7 +4796,7 @@ boolean was_swallowed;			/* digestion */
 						continue;
 					if (!axus && mtmp->mtyp == PM_AXUS)
 						axus = mtmp;
-					if (!found && mtmp->mtyp == current_ton-1) {
+					if (!found && current_ton != PM_MONOTON && mtmp->mtyp == current_ton-1) {
 						set_mon_data(mtmp, current_ton);
 						//Assumes Auton
 						mtmp->m_lev += 1;
@@ -4861,6 +4908,8 @@ boolean was_swallowed;			/* digestion */
 		   || (mdat->geno & G_UNIQ)
 		   || is_alabaster_mummy(mon->data)
 		   || (uwep && uwep->oartifact == ART_SINGING_SWORD && uwep->osinging == OSING_LIFE && mon->mtame)
+		   || mdat->mtyp == PM_APHANACTONAN_AUDIENT
+		   || mdat->mtyp == PM_APHANACTONAN_ASSESSOR
 		   || mdat->mtyp == PM_HARROWER_OF_ZARIEL
 		   || mdat->mtyp == PM_UNDEAD_KNIGHT
 		   || mdat->mtyp == PM_WARRIOR_OF_SUNLIGHT
@@ -5436,7 +5485,7 @@ int how;
 	else if ((mdef->wormno ? worm_known(mdef) : cansee(mdef->mx, mdef->my))
 		&& fltxt)
 	    pline("%s is %s%s%s!", Monnam(mdef),
-			nonliving(mdef->data) ? "destroyed" : "killed",
+			banish_kill(mdef->mtyp) ? "banished" : nonliving(mdef->data) ? "destroyed" : "killed",
 		    *fltxt ? " by the " : "",
 		    fltxt
 		 );
@@ -5548,7 +5597,7 @@ xkilled(mtmp, dest)
 	}
 	
 	if (dest & 1) {
-	    const char *verb = nonliving(mtmp->data) ? "destroy" : "kill";
+	    const char *verb = banish_kill(mtmp->mtyp) ? "banish" : nonliving(mtmp->data) ? "destroy" : "kill";
 
 	    if (!wasinside && !canspotmon(mtmp))
 		You("%s it!", verb);
@@ -5574,7 +5623,7 @@ xkilled(mtmp, dest)
 	}
 
 	// You killed a mummy and suffer from its curse.
-	if(attacktype_fordmg(mtmp->data, AT_NONE, AD_MROT)){
+	if(!mtmp->mcan && attacktype_fordmg(mtmp->data, AT_NONE, AD_MROT)){
 		mummy_curses_x(mtmp, &youmonst);
 	}
 	
@@ -5787,7 +5836,7 @@ cleanup:
 		if (p_coaligned(mtmp)) u.ublessed = 0;
 		if (mdat->maligntyp == A_NONE)
 			adjalign((int)(ALIGNLIM / 4));		/* BIG bonus */
-	} else if (mtmp->mtame && !Role_if(PM_EXILE) && !Role_if(PM_ANACHRONOUNBINDER)) {
+	} else if (mtmp->mtame && u.ualign.type != A_VOID && !banish_kill(mtmp->mtyp) && !(EDOG(mtmp) && EDOG(mtmp)->dominated) && !Role_if(PM_ANACHRONOUNBINDER)) {
 		adjalign(-15);	/* bad!! */
 		/* your god is mighty displeased... */
 		if (!Hallucination) You_hear("the rumble of distant thunder...");
@@ -7370,6 +7419,7 @@ int flags;
 	/* set data */
 	mon->mextra_p->esum_p->summoner = summoner;
 	mon->mextra_p->esum_p->sm_id = summoner ? summoner->m_id : 0;
+	mon->mextra_p->esum_p->sm_o_id = 0;
 	mon->mextra_p->esum_p->summonstr = mon->data->mlevel;
 	mon->mextra_p->esum_p->sticky = (!summoner || summoner == &youmonst) && !(flags & ESUMMON_NOFOLLOW);
 	mon->mextra_p->esum_p->permanent = (duration == ESUMMON_PERMANENT);
@@ -7406,6 +7456,7 @@ int flags;
 			add_ox(otmp, OX_ESUM);
 			otmp->oextra_p->esum_p->summoner = mon;
 			otmp->oextra_p->esum_p->sm_id = mon->m_id;
+			otmp->oextra_p->esum_p->sm_o_id = 0;
 			otmp->oextra_p->esum_p->summonstr = 0;
 			otmp->oextra_p->esum_p->sticky = 0;
 			otmp->oextra_p->esum_p->permanent = (duration == ESUMMON_PERMANENT);
@@ -7938,6 +7989,7 @@ int damage;
 					You("panic!");
 				HPanicking += damage*2;
 			}
+			nomul(0, NULL); //Interrupt
 		}
 	}
 }
@@ -8008,6 +8060,7 @@ struct monst *mtmp;
 		}
 		else if(you_blessings_target_inhale()){
 			damage = blessings_consume(mtmp, &youmonst);
+			nomul(0, NULL); //Interrupt
 		}
 		/** Exhale: Cause misfortune (wounds) in line of sight **/
 		if(damage){
@@ -8055,6 +8108,7 @@ struct monst *mtmp;
 		}
 		else if(you_vitality_target_inhale()){
 			damage = vitality_consume(mtmp, invent, &youmonst);
+			nomul(0, NULL); //Interrupt
 		}
 		
 		/** Exhale: Overload positive energy **/
@@ -8076,6 +8130,7 @@ struct monst *mtmp;
 			}
 			else if(you_vitality_target_exhale(mtmp)){
 				vitality_overload(mtmp, &youmonst, damage);
+				nomul(0, NULL); //Interrupt
 			}
 		}
 	}
@@ -8133,7 +8188,8 @@ struct monst *mtmp;
 					tmpm->mpeaceful = 1;
 				} else {
 					if(tmpm->mtame && !(EDOG(tmpm)->loyal)){
-						untame(mtmp, FALSE);
+						untame(tmpm, FALSE);
+						tmpm->mpeaceful = 0;
 						set_malign(tmpm);
 					}
 					else if(!tmpm->mtame && tmpm->mpeaceful){
@@ -8172,6 +8228,7 @@ struct monst *mtmp;
 			losehp(damage, "corrupting slime", KILLED_BY);
 			u.ugrave_arise = temparise;
 			
+			nomul(0, NULL); //Interrupt
 			mtmp->mhp += damage;
 			if(mtmp->mhp > mtmp->mhpmax){
 				mtmp->mhp = mtmp->mhpmax;
@@ -8268,6 +8325,7 @@ struct monst *mtmp;
 			if(has_blood(youracedata) && !Drain_resistance){
 				losexp("blood drain",TRUE,TRUE,TRUE);
 			}
+			nomul(0, NULL); //Interrupt
 
 			mtmp->mhp += damage;
 			if(mtmp->mhp > mtmp->mhpmax){
@@ -8298,6 +8356,7 @@ struct monst *mtmp;
 				if(Half_spel(tmpm)) damage = (damage+1)/2;
 
 				xdamagey(mtmp, tmpm, (struct attack *)0, damage);
+				nomul(0, NULL); //Interrupt
 			}
 			if(you_wastes_target_exhale(mtmp)){
 				damage = d(5, 5);
@@ -8435,6 +8494,7 @@ struct monst *mtmp;
 					mtmp->muy = u.uy;
 				}
 			}
+			nomul(0, NULL); //Interrupt
 		}
 		/** Exhale: Scream into mind **/
 		if(damage){
@@ -8459,6 +8519,7 @@ struct monst *mtmp;
 				}
 				//Handle off-target side effects
 				thought_scream_side_effects(mtmp, &youmonst, damage);
+				nomul(0, NULL); //Interrupt
 			} else {
 				for(tmpm = fmon; tmpm; tmpm = tmpm->nmon)
 					if(valid_gray_target_exhale(tmpm))
@@ -8592,6 +8653,7 @@ struct monst *mtmp;
 			if(mtmp->mhp > mtmp->mhpmax){
 				mtmp->mhp = mtmp->mhpmax;
 			}
+			nomul(0, NULL); //Interrupt
 			mtmp->mspec_used = 0;
 			set_mcan(mtmp, FALSE);
 			mtmp->mux = u.ux;
@@ -8707,6 +8769,7 @@ struct monst *mtmp;
 			if(mtmp->mhp > mtmp->mhpmax){
 				mtmp->mhp = mtmp->mhpmax;
 			}
+			nomul(0, NULL); //Interrupt
 			mtmp->mspec_used = 0;
 			set_mcan(mtmp, FALSE);
 			mtmp->mux = u.ux;
@@ -8737,6 +8800,7 @@ struct monst *mtmp;
 					killer = "the ancient breath of death";
 					done(DIED);
 				}
+				nomul(0, NULL); //Interrupt
 			} else {
 				struct monst *targ = 0;
 				for(tmpm = fmon; tmpm; tmpm = tmpm->nmon){
@@ -8891,6 +8955,7 @@ struct monst *mtmp;
 			if(mtmp->mhp > mtmp->mhpmax){
 				mtmp->mhp = mtmp->mhpmax;
 			}
+			nomul(0, NULL); //Interrupt
 			mtmp->mspec_used = 0;
 			set_mcan(mtmp, FALSE);
 			mtmp->mux = u.ux;
@@ -8961,6 +9026,7 @@ struct monst *mtmp;
 					}
 				}
 				u.umadness |= MAD_COLD_NIGHT;
+				nomul(0, NULL); //Interrupt
 			} else {
 				struct monst *targ = 0;
 				struct obj *otmp;

@@ -279,7 +279,7 @@ satiate_uhunger()
 		u.uen = min(u.uen+400, u.uenmax*.55);
 		newuhs(TRUE);
 	} else {
-		if(u.uhunger > min(u.uhunger+400, u.uhungermax*.55))
+		if(u.uhunger > u.uhungermax*.55)
 			return FALSE;
 		u.uhunger = u.uhungermax*.55;
 		u.uhs = NOT_HUNGRY;
@@ -2052,7 +2052,7 @@ struct obj *otmp;
 		     * alternative form's food! 
 		     */
 		    pline("That tripe ration was surprisingly good!");
-		else if (maybe_polyd(is_orc(youmonst.data), Race_if(PM_ORC)))
+		else if (maybe_polyd(is_orc(youmonst.data), Race_if(PM_ORC)) || Race_if(PM_HALF_DRAGON))
 		    pline(Hallucination ? "Tastes great! Less filling!" :
 			  "Mmm, tripe... not bad!");
 		else {
@@ -2148,7 +2148,7 @@ struct obj *otmp;
 
 	/* Note: rings are not so common that this is unbalancing. */
 	/* (How often do you even _find_ 3 rings of polymorph in a game?) */
-	oldprop = u.uprops[objects[typ].oc_oprop].intrinsic;
+	oldprop = u.uprops[objects[typ].oc_oprop[0]].intrinsic;
 	if (otmp == uleft || otmp == uright) {
 	    Ring_gone(otmp);
 	    if (u.uhp <= 0) return; /* died from sink fall */
@@ -2157,12 +2157,12 @@ struct obj *otmp;
 	if (otmp->otyp == AMULET_OF_STRANGULATION || otmp->otyp == AMULET_OF_DRAIN_RESISTANCE || !rn2(otmp->oclass == RING_CLASS ? 3 : 5)) {
 	  switch (otmp->otyp) {
 	    default:
-	        if (!objects[typ].oc_oprop) break; /* should never happen */
+	        if (!objects[typ].oc_oprop[0]) break; /* should never happen */
 
-		if (!(u.uprops[objects[typ].oc_oprop].intrinsic & FROMOUTSIDE))
+		if (!(u.uprops[objects[typ].oc_oprop[0]].intrinsic & FROMOUTSIDE))
 		    accessory_has_effect(otmp);
 
-		u.uprops[objects[typ].oc_oprop].intrinsic |= TIMEOUT_INF;
+		u.uprops[objects[typ].oc_oprop[0]].intrinsic |= TIMEOUT_INF;
 
 		switch (typ) {
 		  case RIN_SEE_INVISIBLE:

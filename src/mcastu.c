@@ -356,8 +356,20 @@ choose_magic_special(mtmp, type)
 struct monst *mtmp;
 unsigned int type;
 {
-	int clrc_spell_power = mtmp->m_id == 0 ? (rn2(u.ulevel) * 18 / 30) : rn2(mtmp->m_lev);
-	int wzrd_spell_power = mtmp->m_id == 0 ? (rn2(u.ulevel) * 24 / 30) : rn2(mtmp->m_lev);
+	int clrc_spell_power;
+	int wzrd_spell_power;
+	if(mtmp->m_id == 0){
+		clrc_spell_power = rn2(u.ulevel) * 18 / 30;
+		wzrd_spell_power = rn2(u.ulevel) * 24 / 30;
+	}
+	else {
+		if(mtmp->mtemplate == YITH){
+			clrc_spell_power = wzrd_spell_power = rn2(45);
+		}
+		else {
+			clrc_spell_power = wzrd_spell_power = rn2(mtmp->m_lev);
+		}
+	}
 	boolean quake = FALSE;
 	//50% favored spells
     if (rn2(2)) {
@@ -3651,9 +3663,18 @@ int tary;
 				explode(tarx, tary, adtyp, MON_EXPLODE, dmg, color, 1);
 			}
 			else {
-				explode(tarx + rn2(3) - 1, tary + rn2(3) - 1, adtyp, MON_EXPLODE, dmg, color, 1);
-				explode(tarx + rn2(3) - 1, tary + rn2(3) - 1, adtyp, MON_EXPLODE, dmg, color, 1);
-				explode(tarx + rn2(3) - 1, tary + rn2(3) - 1, adtyp, MON_EXPLODE, dmg, color, 1);
+				int x;
+				int y;
+				int i;
+				for(i = 0; i < 3; i++){
+					x = tarx + rn2(3) - 1;
+					y = tary + rn2(3) - 1;
+					if(!isok(x,y) || !ZAP_POS(levl[x][y].typ)){
+						x = tarx;
+						y = tary;
+					}
+					explode(x, y, adtyp, MON_EXPLODE, dmg, color, 1);
+				}
 			}
 		}
 		return MM_HIT | ((mdef && DEADMONSTER(mdef)) ? MM_DEF_DIED : 0);
@@ -4500,7 +4521,7 @@ int tary;
 					struct obj* otmp;
 					/* not a perfect method to check if mdef gets INVIS from an item */
 					for (otmp = mdef->minvent; otmp; otmp = otmp->nobj)
-					if (otmp->owornmask && objects[otmp->otyp].oc_oprop == INVIS)
+					if (otmp->owornmask && objects[otmp->otyp].oc_oprop[0] == INVIS)
 						break;
 					if (!otmp) mdef->minvis = 0;
 					newsym(x(mdef), y(mdef));

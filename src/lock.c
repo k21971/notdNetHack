@@ -123,7 +123,7 @@ picklock()	/* try to open/close a lock */
 {
 
 	if (xlock.box) {
-	    if((xlock.box->ox != u.ux) || (xlock.box->oy != u.uy)) {
+	    if((xlock.box->where != OBJ_FLOOR) || (xlock.box->ox != u.ux) || (xlock.box->oy != u.uy)) {
 		return((xlock.usedtime = 0));		/* you or it moved */
 	    }
 	} else {		/* door */
@@ -807,7 +807,7 @@ doforce()		/* try to force a chest with your weapon */
 		    else
 				xlock.chance = uwep->spe + objects[uwep->otyp].oc_wldam.oc_damd;
 		    xlock.picktyp = picktyp;
-		    xlock.usedtime = 0;    
+		    xlock.usedtime = 0;
 		    xlock.door = door;
 		    xlock.box = 0;
 		    set_occupation(forcedoor, "forcing the door", 0);

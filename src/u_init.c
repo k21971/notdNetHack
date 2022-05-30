@@ -71,7 +71,7 @@ static struct trobj Anachrononaut_Hu[] = {
 	{ PLASTEEL_BOOTS, 0, ARMOR_CLASS, 1, 0 },
 	{ CLOAK_OF_MAGIC_RESISTANCE, 0, ARMOR_CLASS, 1, 0 },
 	{ POWER_PACK, 0, TOOL_CLASS, 5, 0 },
-	{ PROTEIN_PILL, 0, FOOD_CLASS, 10, 0 },
+	{ PROTEIN_PILL, 0, FOOD_CLASS, 6, 0 },
 	{ 0, 0, 0, 0, 0 }
 };
 static struct trobj Anachrononaut_Hlf[] = {
@@ -85,7 +85,7 @@ static struct trobj Anachrononaut_Hlf[] = {
 	{ BULLET_FABBER, 0, TOOL_CLASS, 1, 0 },
 	{ CUTTING_LASER,  0, WEAPON_CLASS, 1, 0 },
 	{ POWER_PACK, 0, TOOL_CLASS, 5, 0 },
-	{ PROTEIN_PILL, 0, FOOD_CLASS, 10, 0 },
+	{ PROTEIN_PILL, 0, FOOD_CLASS, 6, 0 },
 	{ 0, 0, 0, 0, 0 }
 };
 static struct trobj Anachrononaut_Dw[] = {
@@ -101,7 +101,7 @@ static struct trobj Anachrononaut_Dw[] = {
 	{ AMULET_OF_NULLIFY_MAGIC, 0, AMULET_CLASS, 1, 0 },
 	{ BULLET, 3, WEAPON_CLASS, 100, 0 },
 	{ BULLET_FABBER, 0, TOOL_CLASS, 1, 0 },
-	{ PROTEIN_PILL, 0, FOOD_CLASS, 10, 0 },
+	{ PROTEIN_PILL, 0, FOOD_CLASS, 6, 0 },
 	{ 0, 0, 0, 0, 0 }
 };
 static struct trobj Anachrononaut_Gno[] = {
@@ -166,7 +166,7 @@ static struct trobj Anachrononaut_ShDro[] = {
 	{ GAUNTLETS_OF_DEXTERITY, 1, ARMOR_CLASS, 1, 0 },
 	{ ELVEN_BOOTS, 1, ARMOR_CLASS, 1, 0 },
 	{ POWER_PACK, 0, TOOL_CLASS,  5, 0 },
-	{ PROTEIN_PILL, 0, FOOD_CLASS, 10, 0 },
+	{ PROTEIN_PILL, 0, FOOD_CLASS, 6, 0 },
 	{ SPE_FORCE_BOLT, 0, SPBOOK_CLASS, 1, 0 },
 	{ SPE_SLOW_MONSTER, 0, SPBOOK_CLASS, 1, 0 },
 	{ SPE_PROTECTION, 0, SPBOOK_CLASS, 1, 0 },
@@ -186,7 +186,7 @@ static struct trobj Anachrononaut_Dro[] = {
 	{ BULLET, 0, WEAPON_CLASS, 60, 0 },
 	{ SILVER_BULLET, 0, WEAPON_CLASS, 30, 0 },
 	{ BULLET_FABBER, UNDEF_SPE, TOOL_CLASS, 1, 0 },
-	{ PROTEIN_PILL, 0, FOOD_CLASS, 10, 0 },
+	{ PROTEIN_PILL, 0, FOOD_CLASS, 6, 0 },
 	{ 0, 0, 0, 0, 0 }
 };
 static struct trobj Anachrononaut_Elf[] = {
@@ -373,7 +373,9 @@ static struct trobj Knight[] = {
 	{ KITE_SHIELD, 0, ARMOR_CLASS, 1, UNDEF_BLESS },
 	{ GLOVES, 0, ARMOR_CLASS, 1, UNDEF_BLESS },
 	{ HIGH_BOOTS, 0, ARMOR_CLASS, 1, UNDEF_BLESS },
+#define K_APPLES 7
 	{ APPLE, 0, FOOD_CLASS, 10, 0 },
+#define K_CARROTS 8
 	{ CARROT, 0, FOOD_CLASS, 10, 0 },
 	{ 0, 0, 0, 0, 0 }
 };
@@ -834,6 +836,8 @@ static struct inv_sub { short race_pm, item_otyp, subs_otyp; } inv_subs[] = {
     { PM_SALAMANDER,	KNIFE,			SPEAR	      },
     { PM_SALAMANDER,	SHORT_SWORD,		SPEAR    },
     { PM_SALAMANDER,	AXE,		SPEAR    },
+    { PM_SALAMANDER,	HIGH_BOOTS,		CRAM_RATION    },
+    { PM_SALAMANDER,	LOW_BOOTS,		CRAM_RATION    },
     // Vampire substitutions
     { PM_VAMPIRE,	ATHAME,				DAGGER    	  },
     { PM_VAMPIRE,	FOOD_RATION,		POT_BLOOD    	  },
@@ -1626,12 +1630,12 @@ register char sym;
    which appear to be more than enough tools.
    We might also add GEM_CLASS with oc_material != GLASS 
 *** Contributed by Johanna Ploog */
-STATIC_OVL void
-know_random_obj()
+void
+know_random_obj(count)
+int count;
 {
-        register int obj, count, ct;
+        register int obj, ct;
 
-        count = rn1(11,5);
         for (ct = 500; ct > 0 && count > 0; ct--) {
            obj = rn2(NUM_OBJECTS);
            if (objects[obj].oc_magic &&
@@ -2101,7 +2105,7 @@ u_init()
 		knows_object(SPE_CAUSE_FEAR);
 		knows_object(SPE_CHARM_MONSTER);
 		/* Bards also know a lot about legendary & magical stuff. */
-		know_random_obj();
+		know_random_obj(rn1(11,5));
 		/* Bards also know all the basic wards. */
 		u.wardsknown = WARD_ACHERON|WARD_HAMSA|WARD_ELDER_SIGN|WARD_EYE|WARD_QUEEN|WARD_CAT_LORD|WARD_GARUDA;
 		u.wardsknown |= WARD_TOUSTEFNA;
@@ -2232,7 +2236,11 @@ u_init()
 		break;
 	case PM_KNIGHT:
 		if(Race_if(PM_DWARF)) ini_inv(DwarfNoble);
-		else ini_inv(Knight);
+		else if(Race_if(PM_HALF_DRAGON)){
+			Knight[K_APPLES].trquan = rn1(9, 5);
+			Knight[K_CARROTS].trquan = 1;
+			ini_inv(Knight);
+		} else ini_inv(Knight);
 		knows_class(WEAPON_CLASS);
 		knows_class(ARMOR_CLASS);
 		/* give knights chess-like mobility
@@ -2522,6 +2530,8 @@ u_init()
 				u.ualign.god = u.ugodbase[UGOD_CURRENT] = u.ugodbase[UGOD_ORIGINAL] = align_to_god(u.ualign.type);
 				flags.initalign = 1; // 1 == neutral
 			}
+		} else if(Role_if(PM_ANACHRONONAUT)){
+			u.umartial = TRUE;
 		} else if(!Role_if(PM_EXILE) && !Role_if(PM_CONVICT) && !Role_if(PM_MADMAN)){
 			ini_inv(DrovenCloak);
 			if(!flags.female && !Role_if(PM_ANACHRONOUNBINDER)){
@@ -2530,8 +2540,6 @@ u_init()
 				u.ualign.god = u.ugodbase[UGOD_CURRENT] = u.ugodbase[UGOD_ORIGINAL] = align_to_god(u.ualign.type);
 				flags.initalign = 1; // 1 == neutral
 			}
-		} else if(Role_if(PM_ANACHRONONAUT)){
-			u.umartial = TRUE;
 		}
 	    /* Drow can recognize all droven objects */
 		if(!Role_if(PM_MADMAN)){ /*Madmen have been amnesticized*/
@@ -2619,7 +2627,7 @@ u_init()
 		}
     break;
 	case PM_SALAMANDER:
-		skill_add(Skill_Sala);
+		if(!Role_if(PM_MADMAN)) skill_add(Skill_Sala);
     break;
 
 	case PM_ORC:
@@ -2937,7 +2945,7 @@ register struct trobj *trop;
 			if(obj->oclass == ARMOR_CLASS){
 				if(is_suit(obj)) obj->bodytypeflag = (youracedata->mflagsb&MB_BODYTYPEMASK);
 				else if(is_helmet(obj)) obj->bodytypeflag = (youracedata->mflagsb&MB_HEADMODIMASK);
-				else if(is_shirt(obj)) obj->bodytypeflag = (youracedata->mflagsb&MB_HUMANOID) ? MB_HUMANOID : (youracedata->mflagsb&MB_BODYTYPEMASK);
+				else if(is_shirt(obj)) obj->bodytypeflag = (youracedata->mflagsb&MB_HUMANOID && !Race_if(PM_SALAMANDER)) ? MB_HUMANOID : (youracedata->mflagsb&MB_BODYTYPEMASK);
 			}
 			if(obj->otyp == BULLWHIP && Race_if(PM_DROW) && flags.initgend){
 				obj->otyp = VIPERWHIP;

@@ -78,6 +78,7 @@ static const char * const sizeStr[] = {
 	"bigger-than-a-breadbox",
 	"small",
 	"human-sized",
+	"medium",
 	"large",
 	"gigantic",
 	"colossal",
@@ -420,7 +421,7 @@ lookat(x, y, buf, monbuf, shapebuff)
 		if(!do_halu){
 			if(mdat->msize == MZ_TINY) Sprintf(shapebuff, "a tiny");
 			else if(mdat->msize == MZ_SMALL) Sprintf(shapebuff, "a small");
-			else if(mdat->msize == MZ_HUMAN) Sprintf(shapebuff, "a human-sized");
+			else if(mdat->msize == MZ_MEDIUM) Sprintf(shapebuff, "a medium");
 			else if(mdat->msize == MZ_LARGE) Sprintf(shapebuff, "a large");
 			else if(mdat->msize == MZ_HUGE) Sprintf(shapebuff, "a huge");
 			else if(mdat->msize == MZ_GIGANTIC) Sprintf(shapebuff, "a gigantic");
@@ -2097,6 +2098,7 @@ get_description_of_damage_type(uchar id)
 	case AD_MOON: return "silver moonlight";
 	case AD_HOLY: return "holy energy";
 	case AD_UNHY: return "unholy energy";
+	case AD_PERH: return "level-based damage";
 	default:
 			impossible("bug in get_description_of_damage_type(%d)", id);
 			return "<MISSING DESCRIPTION, THIS IS A BUG>";

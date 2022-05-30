@@ -600,6 +600,10 @@ const char *name;
 	   obj && obj->otyp != find_good_iring()){
 		obj = poly_obj(obj,find_good_iring());
 	}
+	else if(!strcmp((&artilist[ART_NENYA])->name,name) &&
+	   obj && obj->otyp != find_sring()){
+		obj = poly_obj(obj,find_sring());
+	}
 	else if(!strcmp((&artilist[ART_SILVER_KEY])->name,name) &&
 	   obj && obj->otyp == UNIVERSAL_KEY && Role_if(PM_EXILE)){
 		obj = poly_obj(obj,MIRROR);
@@ -1137,7 +1141,7 @@ boolean called;
 			struct obj *otmp;
 			for (otmp = mtmp->minvent; otmp; otmp = otmp->nobj) {
 				if ((otmp->otyp == DROVEN_PLATE_MAIL || otmp->otyp == DROVEN_CHAIN_MAIL || otmp->otyp == CONSORT_S_SUIT) 
-					&& otmp->owornmask & mtmp->misc_worn_check){
+					&& otmp->owornmask & mtmp->misc_worn_check && otmp->oward){
 						Sprintf(eos(buf), "%s ", getDrowHouse(otmp->oward));
 						name_at_start = FALSE;
 					}
@@ -1200,7 +1204,7 @@ boolean called;
 				struct obj *otmp;
 				for (otmp = mtmp->minvent; otmp; otmp = otmp->nobj) {
 					if ((otmp->otyp == DROVEN_PLATE_MAIL || otmp->otyp == DROVEN_CHAIN_MAIL || otmp->otyp == CONSORT_S_SUIT) 
-						&& otmp->owornmask & mtmp->misc_worn_check){
+						&& otmp->owornmask & mtmp->misc_worn_check && otmp->oward){
 							Sprintf(eos(buf), "%s ", getDrowHouse(otmp->oward));
 							name_at_start = FALSE;
 						}
@@ -1263,7 +1267,7 @@ boolean called;
 			struct obj *otmp;
 			for (otmp = mtmp->minvent; otmp; otmp = otmp->nobj) {
 				if ((otmp->otyp == DROVEN_PLATE_MAIL || otmp->otyp == DROVEN_CHAIN_MAIL || otmp->otyp == CONSORT_S_SUIT) 
-					&& otmp->owornmask & mtmp->misc_worn_check){
+					&& otmp->owornmask & mtmp->misc_worn_check && otmp->oward){
 						Sprintf(eos(buf), "%s ", getDrowHouse(otmp->oward));
 						name_at_start = FALSE;
 					}

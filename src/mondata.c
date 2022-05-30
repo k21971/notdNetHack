@@ -1153,6 +1153,13 @@ int level_bonus;
 			attkptr->damn = 1 + d(1, 2) + rn2(2)*rn2(3);	/* 2 -  5, trailing right */
 			attkptr->damd = rn2(5 - attkptr->damn) * 2 + 6;	/* 6 - 10, by 2s */
 
+
+			/* int-drain attack uses dice as stat damage, reduce dice to compensate */
+			if (attkptr->adtyp == AD_DRIN) {
+				attkptr->damn /= 2;	/* 1 - 2 */
+				attkptr->damd /= 2;	/* 3 - 5 */
+			}
+
 			/* sometimes consolidate into a high-variance attack */
 			if (!rn2(4)) {
 				int n = 1 + rn2(2)*rn2(2);
@@ -2274,7 +2281,7 @@ static const short grownups[][2] = {
 	{PM_BABY_METROID, PM_METROID},{PM_METROID, PM_ALPHA_METROID}, {PM_ALPHA_METROID, PM_GAMMA_METROID},
 	{PM_GAMMA_METROID, PM_ZETA_METROID}, {PM_ZETA_METROID, PM_OMEGA_METROID}, 
 	{PM_OMEGA_METROID, PM_METROID_QUEEN},
-	{PM_VAMPIRE, PM_VAMPIRE_LORD}, {PM_BAT, PM_GIANT_BAT},
+	{PM_VAMPIRE, PM_VAMPIRE_LORD}, {PM_VAMPIRE, PM_VAMPIRE_LADY}, {PM_BAT, PM_GIANT_BAT},
 	{PM_GIANT_BAT, PM_BATTLE_BAT}, {PM_BATTLE_BAT, PM_WARBAT},
 	{PM_BABY_GRAY_DRAGON, PM_GRAY_DRAGON},
 	{PM_BABY_SILVER_DRAGON, PM_SILVER_DRAGON},

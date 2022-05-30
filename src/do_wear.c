@@ -100,7 +100,7 @@ Boots_on()
 		ABON(A_CHA) += 2;
 		flags.botl = 1;
 	}
-	oldprop = (u.uprops[objects[uarmf->otyp].oc_oprop].extrinsic & ~WORN_BOOTS);
+	oldprop = (u.uprops[objects[uarmf->otyp].oc_oprop[0]].extrinsic & ~WORN_BOOTS);
 
     switch(uarmf->otyp) {
 	case LOW_BOOTS:
@@ -154,7 +154,7 @@ int
 Boots_off()
 {
     int otyp = uarmf->otyp;
-    long oldprop = u.uprops[objects[otyp].oc_oprop].extrinsic & ~WORN_BOOTS;
+    long oldprop = u.uprops[objects[otyp].oc_oprop[0]].extrinsic & ~WORN_BOOTS;
 
 	if (!cancelled_don) adj_abon(uarmf, -uarmf->spe);
 
@@ -226,7 +226,7 @@ Cloak_on()
     long oldprop;
     if (!uarmc) return 0;
     oldprop =
-	u.uprops[objects[uarmc->otyp].oc_oprop].extrinsic & ~WORN_CLOAK;
+	u.uprops[objects[uarmc->otyp].oc_oprop[0]].extrinsic & ~WORN_CLOAK;
 
 	adj_abon(uarmc, uarmc->spe);
     switch(uarmc->otyp) {
@@ -294,7 +294,7 @@ Cloak_off()
 {
     int otyp = uarmc->otyp;
 	boolean checkweight = FALSE;
-    long oldprop = u.uprops[objects[otyp].oc_oprop].extrinsic & ~WORN_CLOAK;
+    long oldprop = u.uprops[objects[otyp].oc_oprop[0]].extrinsic & ~WORN_CLOAK;
 	if(arti_lighten(uarmc, FALSE)) checkweight = TRUE;
 
 	if (!cancelled_don) adj_abon(uarmc, -uarmc->spe);
@@ -562,7 +562,7 @@ Gloves_on()
     long oldprop;
     if (!uarmg) return 0;
     oldprop =
-	u.uprops[objects[uarmg->otyp].oc_oprop].extrinsic & ~WORN_GLOVES;
+	u.uprops[objects[uarmg->otyp].oc_oprop[0]].extrinsic & ~WORN_GLOVES;
 
 	adj_abon(uarmg, uarmg->spe);
     switch(uarmg->otyp) {
@@ -596,7 +596,7 @@ int
 Gloves_off()
 {
     long oldprop =
-	u.uprops[objects[uarmg->otyp].oc_oprop].extrinsic & ~WORN_GLOVES;
+	u.uprops[objects[uarmg->otyp].oc_oprop[0]].extrinsic & ~WORN_GLOVES;
 
 	if (!cancelled_don) adj_abon(uarmg, -uarmg->spe);
     takeoff_mask &= ~W_ARMG;
@@ -924,7 +924,11 @@ void
 Amulet_off()
 {
     takeoff_mask &= ~W_AMUL;
-
+	
+	if(!uamul){
+		impossible("Amulet_off() was called, but no amulet is worn.");
+		return;
+	}
     switch(uamul->otyp) {
 	case AMULET_OF_ESP:
 		/* need to update ability before calling see_monsters() */
@@ -978,7 +982,7 @@ void
 Ring_on(obj)
 register struct obj *obj;
 {
-    long oldprop = u.uprops[objects[obj->otyp].oc_oprop].extrinsic;
+    long oldprop = u.uprops[objects[obj->otyp].oc_oprop[0]].extrinsic;
     int old_attrib, which;
 
     if (obj == uwep) setuwep((struct obj *) 0);
@@ -1103,7 +1107,7 @@ boolean gone;
     int old_attrib, which;
 
     takeoff_mask &= ~mask;
-    if(objects[obj->otyp].oc_oprop && !(u.uprops[objects[obj->otyp].oc_oprop].extrinsic & mask))
+    if(objects[obj->otyp].oc_oprop[0] && !(u.uprops[objects[obj->otyp].oc_oprop[0]].extrinsic & mask))
 	impossible("Strange... I didn't know you had that ring.");
     if(gone) setnotworn(obj);
     else setworn((struct obj *)0, obj->owornmask);
@@ -2477,6 +2481,10 @@ base_uac()
 			dexbonus = min(dexbonus,0);
 		}
 		
+		if(uarm && uarm->otyp == STRAITJACKET && uarm->cursed){
+			dexbonus -= 5; //flat penalty.
+		}
+		
 		if(dexbonus < -5)
 			dexbonus = -5;
 		
@@ -3087,6 +3095,14 @@ register struct obj *otmp;
 			why->bknown = TRUE;
 			return 0;
 	    }
+	}
+	/* merged-with-skin check */
+	if (otmp->owornmask & W_SKIN) {
+		Your("%s %s merged with your skin!",
+			simple_typename(otmp->otyp),
+			otmp->otyp >= GRAY_DRAGON_SCALES && otmp->otyp <= YELLOW_DRAGON_SCALES ? "are" : "is"
+			);
+		return 0;
 	}
 	/* basic curse check */
 	if (otmp == uquiver || (otmp == uswapwep && !u.twoweap)) {
@@ -5072,9 +5088,9 @@ struct obj *wep;
 			continue;
 		
 		if(arti_is_prop(wep, ARTI_BLOODTHRST)){
-			if(	(youagr && (mdef->mpeaceful && !roll_generic_madness()))
-				|| (youdef && (magr->mpeaceful && !roll_generic_madness()))
-				|| (!youagr && !youdef && (magr->mpeaceful != mdef->mpeaceful))
+			if(	(youagr && (mdef->mpeaceful && !roll_generic_madness(TRUE)))
+				|| (youdef && (magr->mpeaceful && !roll_generic_madness(TRUE)))
+				|| (!youagr && !youdef && (magr->mpeaceful == mdef->mpeaceful))
 			)
 				continue;
 			if(!rn2(4))
