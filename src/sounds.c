@@ -1126,7 +1126,7 @@ boolean chatting;
 			default:
 			break;
 		}
-		//if(made_purchase) achieve.used_smith = 1;
+		if(made_purchase) achieve.used_smith = 1;
 		break;
 	}
 	case MS_PORTAL:{
@@ -3738,6 +3738,16 @@ int tx,ty;
 		You("have already released that spirit from the void.");
 		return 0;
 	}	
+	
+	if(u.veil){
+		You("feel reality threatening to slip away!");
+		if (yn("Are you sure you want proceed with the ritual?") != 'y'){
+			return 0;
+		}
+		else pline("So be it.");
+		u.veil = FALSE;
+		change_uinsight(1);
+	}
 	switch(ep->ward_id){
 	case AHAZU:{
 		if(u.sealTimeout[AHAZU-FIRST_SEAL] < moves){
