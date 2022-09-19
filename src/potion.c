@@ -388,24 +388,24 @@ dodrink()
 
 	if (Strangled) {
 		pline("If you can't breathe air, how can you drink liquid?");
-		return 0;
+		return MOVE_INSTANT;
 	}
 	
 	if (uarmh && FacelessHelm(uarmh)){
 		pline("The %s covers your whole face.", xname(uarmh));
 		display_nhwindow(WIN_MESSAGE, TRUE);    /* --More-- */
-		return 0;
+		return MOVE_INSTANT;
 	}
 	if (uarmc && FacelessCloak(uarmc)){
 		pline("The %s covers your whole face.", xname(uarmc));
 		display_nhwindow(WIN_MESSAGE, TRUE);    /* --More-- */
-		return 0;
+		return MOVE_INSTANT;
 	}
 	/* Is there a fountain to drink from here? */
 	if (IS_FOUNTAIN(levl[u.ux][u.uy].typ) && !Levitation) {
 		if(yn("Drink from the fountain?") == 'y') {
 			drinkfountain();
-			return 1;
+			return MOVE_QUAFFED;
 		}
 	}
 #ifdef SINKS
@@ -413,7 +413,7 @@ dodrink()
 	if (IS_SINK(levl[u.ux][u.uy].typ)) {
 		if (yn("Drink from the sink?") == 'y') {
 			drinksink();
-			return 1;
+			return MOVE_QUAFFED;
 		}
 	}
 #endif
@@ -434,7 +434,7 @@ dodrink()
 	}
 
 	otmp = getobj(beverages, "drink");
-	if(!otmp) return(0);
+	if(!otmp) return MOVE_CANCELLED;
 	if(otmp->ostolen && u.sealsActive&SEAL_ANDROMALIUS) unbind(SEAL_ANDROMALIUS, TRUE);
 
 	/* quan > 1 used to be left to useup(), but we need to force
@@ -466,25 +466,26 @@ dodrink()
 		    !rn2(POTION_OCCUPANT_CHANCE(flags.ghost_count))) {
 		ghost_from_bottle();
 		useup(otmp);
-		return(1);
+		return MOVE_STANDARD;
 	    } else if (!strcmp(potion_descr, "smoky") &&
 		    flags.djinni_count < MAXMONNO &&
 		    !rn2(POTION_OCCUPANT_CHANCE(flags.djinni_count))) {
 		djinni_from_bottle(otmp);
 		useup(otmp);
-		return(1);
+		return MOVE_STANDARD;
 	    }
 	}
-	return dopotion(otmp);
+	return dopotion(otmp, FALSE);
 }
 
 int
-dopotion(otmp)
+dopotion(otmp, force)
 register struct obj *otmp;
+boolean force;
 {
 	int retval;
 
-	if(otmp->otyp == POT_GOAT_S_MILK && u.veil){
+	if(!force && otmp->otyp == POT_GOAT_S_MILK && u.veil){
 		You("feel reality threatening to slip away from the mere scent of the potion!");
 		if (yn("Are you sure you want to drink it?") != 'y'){
 			return(0);
@@ -498,7 +499,7 @@ register struct obj *otmp;
 		otmp->in_use = FALSE;
 	
 	nothing = unkn = 0;
-	if((retval = peffects(otmp)) >= 0) return(retval);
+	if((retval = peffects(otmp, force)) >= 0) return(retval);
 
 	if(nothing) {
 	    unkn++;
@@ -513,12 +514,13 @@ register struct obj *otmp;
 			docall(otmp);
 	}
 	if(!otmp->oartifact) useup(otmp);
-	return(1);
+	return MOVE_QUAFFED;
 }
 
 int
-peffects(otmp)
-	register struct obj	*otmp;
+peffects(otmp, force)
+register struct obj	*otmp;
+boolean force;
 {
 	register int i, ii, lim;
     boolean enhanced;
@@ -615,7 +617,7 @@ peffects(otmp)
 		    else if(Race_if(PM_ETHEREALOID)) healup(50+rnd(50),0,FALSE,FALSE);  
 		    else u.uhunger += 50 + rnd(50);
 			
-			if(u.uhunger > u.uhungermax) u.uhunger = u.uhungermax;
+			if(u.uhunger > get_uhungermax()) u.uhunger = get_uhungermax();
 		    
 		    newuhs(FALSE);
 		} else
@@ -640,7 +642,7 @@ peffects(otmp)
 				pline("This tastes like water.");
 				if(!Race_if(PM_INCANTIFIER)  && !Race_if(PM_ETHEREALOID)) u.uhunger += rnd(10);
 				
-				if(u.uhunger > u.uhungermax) u.uhunger = u.uhungermax;
+				if(u.uhunger > get_uhungermax()) u.uhunger = get_uhungermax();
 		    
 				newuhs(FALSE);
 				break;
@@ -766,8 +768,8 @@ peffects(otmp)
 			newuhs(FALSE);
 		}
 		if (!umechanoid && !Race_if(PM_ETHEREALOID)){
-			if(u.uhunger > u.uhungermax){
-				u.uhunger = u.uhungermax - d(2,20);
+			if(u.uhunger > get_uhungermax()){
+				u.uhunger = get_uhungermax() - d(2,20);
 				vomit();
 				exercise(A_WIS, FALSE);
 			}
@@ -840,7 +842,7 @@ peffects(otmp)
 			  fruitname(TRUE));
 		if (otmp->otyp == POT_FRUIT_JUICE) {
 		    if(!Race_if(PM_INCANTIFIER) && !umechanoid && !Race_if(PM_ETHEREALOID)) u.uhunger += (otmp->odiluted ? 40 : 100) + 10 * (2 + bcsign(otmp));
-            if(u.uhunger > u.uhungermax) u.uhunger = u.uhungermax;
+            if(u.uhunger > get_uhungermax()) u.uhunger = get_uhungermax();
 		    newuhs(FALSE);
 		    break;
 		}
@@ -922,13 +924,13 @@ peffects(otmp)
 		    break;
 		}
 		if (monster_detect(otmp, 0))
-			return(1);		/* nothing detected */
+			return MOVE_QUAFFED;		/* nothing detected */
 		exercise(A_WIS, TRUE);
 		break;
 	case POT_OBJECT_DETECTION:
 	case SPE_DETECT_TREASURE:
 		if (object_detect(otmp, 0))
-			return(1);		/* nothing detected */
+			return MOVE_QUAFFED;		/* nothing detected */
 		exercise(A_WIS, TRUE);
 		break;
 	case POT_SICKNESS:
@@ -1033,6 +1035,16 @@ peffects(otmp)
 	case POT_GAIN_LEVEL:
 		if (otmp->cursed) {
 			unkn++;
+			if (Role_if(PM_ANACHRONOUNBINDER)
+					&& u.uhave.amulet
+					&& ledger_no(&u.uz) == 1) {
+				int missing_items = acu_asc_items_check();
+				if (missing_items) {
+					You("have an uneasy feeling.");
+					acu_asc_items_warning(missing_items);
+					break;
+				}
+			}
 			/* they went up a level */
 			if((ledger_no(&u.uz) == 1 && u.uhave.amulet) ||
 				Can_rise_up(u.ux, u.uy, &u.uz)) {
@@ -1197,8 +1209,8 @@ as_extra_healing:
 			newuhs(FALSE);
 		}
 		if (!umechanoid){
-			if(u.uhunger > u.uhungermax){
-				u.uhunger = u.uhungermax - d(2,20);
+			if(u.uhunger > get_uhungermax()){
+				u.uhunger = get_uhungermax() - d(2,20);
 				vomit();
 				exercise(A_WIS, FALSE);
 			}
@@ -1322,13 +1334,13 @@ as_extra_healing:
 		break;
 	case POT_BLOOD:
 		unkn++;
-		if(your_race(&mons[otmp->corpsenm]) && !is_animal(&mons[otmp->corpsenm]) && !mindless(&mons[otmp->corpsenm]) && !CANNIBAL_ALLOWED() 
+		if(!force && your_race(&mons[otmp->corpsenm]) && !is_animal(&mons[otmp->corpsenm]) && !mindless(&mons[otmp->corpsenm]) && !CANNIBAL_ALLOWED() 
 			&& ((u.ualign.record >= 20 || ACURR(A_WIS) >= 20 || u.ualign.record >= rnd(20-ACURR(A_WIS))) && !roll_madness(MAD_CANNIBALISM))
 		){
 			char buf[BUFSZ];
 			Sprintf(buf, "You feel a deep sense of kinship to %s!  Drink %s anyway?",
 				the(xname(otmp)), (otmp->quan == 1L) ? "it" : "one");
-			if (yn_function(buf,ynchars,'n')=='n') return 0;
+			if (yn_function(buf,ynchars,'n')=='n') return MOVE_CANCELLED;
 		}
 		if (is_vampire(youracedata) || (carnivorous(youracedata) && !herbivorous(youracedata))) {
 			pline("It smells like %s%s.", 
@@ -1344,7 +1356,7 @@ as_extra_healing:
 						makeplural(mons[otmp->corpsenm].mname)
 			);
 			if(!Hallucination) otmp->known = TRUE;
-			if (yn("Drink it?") == 'n') {
+			if (!force && yn("Drink it?") == 'n') {
 				break;
 			}else{
 				violated_vegetarian();
@@ -1379,9 +1391,9 @@ as_extra_healing:
 	break;
 	default:
 		impossible("What a funny potion! (%u)", otmp->otyp);
-		return(0);
+		return MOVE_INSTANT;
 	}
-	return(-1);
+	return(-1);	/* will be handled further in dopotion() */
 }
 
 void
@@ -2639,7 +2651,7 @@ dodip()
 
 	allowall[0] = ALL_CLASSES; allowall[1] = '\0';
 	if(!(obj = getobj(allowall, "dip")))
-		return(0);
+		return MOVE_CANCELLED;
 
 	here = levl[u.ux][u.uy].typ;
 	/* Is there a fountain to dip into here? */
@@ -2651,7 +2663,7 @@ dodip()
 		if(yn("Dip it into the fountain?") == 'y') {
 #endif
 			dipfountain(obj);
-			return(1);
+			return MOVE_STANDARD;
 		}
 	} else if (is_pool(u.ux,u.uy, TRUE)) {
 		tmp = waterbody_name(u.ux,u.uy);
@@ -2672,7 +2684,7 @@ dodip()
 			(void) get_wet(obj, level.flags.lethe); //lethe
 //			if (obj->otyp == POT_ACID) useup(obj); //Potential error here
 		    }
-		    return 1;
+		    return MOVE_STANDARD;
 		}
 	}
 
@@ -2682,10 +2694,10 @@ dodip()
 #else
 	if(!(potion = getobj(beverages, "dip into")))
 #endif
-		return(0);
+		return MOVE_CANCELLED;
 	if (potion == obj && potion->quan == 1L) {
 		pline("That is a potion bottle, not a Klein bottle!");
-		return 0;
+		return MOVE_CANCELLED;
 	}
 	//from Slashem, modified
 	if(!(potion->otyp == POT_WATER || potion->otyp == POT_ACID || polypotion(potion)) && obj->otyp == POT_WATER) {
@@ -2708,7 +2720,7 @@ dodip()
 
 		obj->ovar1 = potion->otyp;
 		useup(potion);
-		return 1;
+		return MOVE_STANDARD;
 	}
 	
 	if(potion->otyp == POT_WATER) {
@@ -2728,7 +2740,7 @@ dodip()
 				   !(objects[potion->otyp].oc_uname))
 					docall(potion);
 				useup(potion);
-				return(1);
+				return MOVE_STANDARD;
 			} else if(!obj->blessed) {
 				if (useeit) {
 				    tmp = hcolor(NH_LIGHT_BLUE);
@@ -2807,33 +2819,41 @@ dodip()
 			pline1(nothing_happens);
 	    } else {
 	    	boolean was_wep = FALSE, was_swapwep = FALSE, was_quiver = FALSE;
-		short save_otyp = obj->otyp;
-		/* KMH, conduct */
-		u.uconduct.polypiles++;
+			short save_otyp = obj->otyp;
+			/* KMH, conduct */
+			u.uconduct.polypiles++;
 
-		if (obj == uwep) was_wep = TRUE;
-		else if (obj == uswapwep) was_swapwep = TRUE;
-		else if (obj == uquiver) was_quiver = TRUE;
+			if (obj == uwep) was_wep = TRUE;
+			else if (obj == uswapwep) was_swapwep = TRUE;
+			else if (obj == uquiver) was_quiver = TRUE;
 
-		obj = randpoly_obj(obj);
+			obj = randpoly_obj(obj);
 
-		if (was_wep) setuwep(obj);
-		else if (was_swapwep) setuswapwep(obj);
-		else if (was_quiver) setuqwep(obj);
+#ifndef GOLDOBJ
+			if(obj->otyp == GOLD_PIECE){
+				u.ugold += 2*obj->quan; //Gold piece handling disaster: useupall reduces the player's gold count by the ammount destroyed, so add the gold twice :(
+				useupall(obj);
+				obj = (struct obj *) 0;
+			}
+#endif
+			if (was_wep) setuwep(obj);
+			else if (was_swapwep) setuswapwep(obj);
+			else if (was_quiver) setuqwep(obj);
 
-		if (obj->otyp != save_otyp || (obj->otyp == HYPOSPRAY_AMPULE && objects[HYPOSPRAY_AMPULE].oc_name_known)) {
-			if (save_otyp == POT_POLYMORPH || potion->otyp == POT_POLYMORPH)
-				makeknown(POT_POLYMORPH);
-			useup(potion);
-			prinv((char *)0, obj, 0L);
-			return 1;
-		} else {
-			pline("Nothing seems to happen.");
-			goto poof;
-		}
+			if (!obj || obj->otyp != save_otyp || (obj->otyp == HYPOSPRAY_AMPULE && objects[HYPOSPRAY_AMPULE].oc_name_known)) {
+				if (save_otyp == POT_POLYMORPH || potion->otyp == POT_POLYMORPH)
+					makeknown(POT_POLYMORPH);
+				useup(potion);
+				if(obj)
+					prinv((char *)0, obj, 0L);
+				return MOVE_STANDARD;
+			} else {
+				pline("Nothing seems to happen.");
+				goto poof;
+			}
 	    }
 	    potion->in_use = FALSE;	/* didn't go poof */
-	    return(1);
+	    return MOVE_STANDARD;
 	} else if(obj->oclass == POTION_CLASS && (obj->otyp != potion->otyp || (obj->otyp == POT_BLOOD && obj->corpsenm != potion->corpsenm))) {
 		/* Mixing potions is dangerous... */
 		pline_The("potions mix...");
@@ -2855,7 +2875,7 @@ dodip()
 			/* some protection against this: */
 			losehp(Acid_resistance ? rnd(5) : rnd(10),
 			       "alchemic blast", KILLED_BY_AN);
-			return(1);
+			return MOVE_STANDARD;
 		}
 
 		obj->blessed = obj->cursed = obj->bknown = 0;
@@ -2895,7 +2915,7 @@ dodip()
 			  pline_The("mixture glows brightly and evaporates.");
 				useup(obj);
 				useup(potion);
-				return(1);
+				return MOVE_STANDARD;
 		    }
 		}
 
@@ -2910,7 +2930,7 @@ dodip()
 		}
 		set_object_color(obj);
 		useup(potion);
-		return(1);
+		return MOVE_STANDARD;
 	}
 
 #ifdef INVISIBLE_OBJECTS
@@ -3043,7 +3063,7 @@ dodip()
 			obj->opoisoned = OPOISON_PARAL;
 			goto poof;
 	    } else if(potion->otyp == POT_STARLIGHT && obj->obj_material != SILVER &&
-	    		(!(obj->opoisoned & OPOISON_SILVER || arti_silvered(obj))
+	    		(!(obj->opoisoned & OPOISON_SILVER)
 	    		|| obj->otyp == VIPERWHIP)
 	    	) {
 			char buf[BUFSZ];
@@ -3243,7 +3263,7 @@ dodip()
 	    exercise(A_WIS, wisx);
 	    makeknown(potion->otyp);
 	    useup(potion);
-	    return 1;
+	    return MOVE_STANDARD;
 	}
     more_dips:
 
@@ -3257,7 +3277,7 @@ dodip()
 		useup(potion);
 		explode(u.ux, u.uy, AD_FIRE, 0, d(6,6), EXPL_FIERY, 1);
 		exercise(A_WIS, FALSE);
-		return 1;
+		return MOVE_STANDARD;
 	} else if((obj->otyp == SUNROD)
 		&& (potion->otyp == POT_ACID)
 	) {
@@ -3285,7 +3305,7 @@ dodip()
 			if (!Blind) Your1(vision_clears);
 		}
 		exercise(A_WIS, FALSE);
-		return 1;
+		return MOVE_STANDARD;
 	/* Allow filling of MAGIC_LAMPs to prevent identification by player */
 	} else if ((obj->otyp == OIL_LAMP || obj->otyp == MAGIC_LAMP) &&
 	   (potion->otyp == POT_OIL)) {
@@ -3294,7 +3314,7 @@ dodip()
 		useup(potion);
 		explode(u.ux, u.uy, AD_FIRE, 0, d(6,6), EXPL_FIERY, 1);
 		exercise(A_WIS, FALSE);
-		return 1;
+		return MOVE_STANDARD;
 	    }
 	    /* Adding oil to an empty magic lamp renders it into an oil lamp */
 	    if ((obj->otyp == MAGIC_LAMP) && obj->spe == 0) {
@@ -3315,7 +3335,7 @@ dodip()
 	    makeknown(POT_OIL);
 	    obj->spe = 1;
 	    update_inventory();
-	    return 1;
+	    return MOVE_STANDARD;
 	}
 	
 	potion->in_use = FALSE;		/* didn't go poof */
@@ -3365,7 +3385,7 @@ dodip()
 		    /* some protection against this: */
 		    losehp(Acid_resistance ? rnd(5) : rnd(10), 
 			   "alchemic blast", KILLED_BY_AN);
-		    return(1);	  
+		    return MOVE_STANDARD;	  
 		  }
 		
 		  pline("%s dissolves in %s.", The(xname(singlegem)), 
@@ -3421,11 +3441,11 @@ dodip()
 					doname(singlepotion), (const char *)0);
 		update_inventory();
 		}
-		return(1);
+		return MOVE_STANDARD;
 	}
 
 	pline("Interesting...");
-	return(1);
+	return MOVE_STANDARD;
 }
 
 

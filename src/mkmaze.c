@@ -364,7 +364,7 @@ int
 init_village(rndlevs)
 int rndlevs;
 {
-	if(Race_if(PM_ELF))
+	if(Race_if(PM_ELF) || Race_if(PM_ENT))
 		return FOREST_VILLAGE;
 	int levvar;
 	boolean levelBad = TRUE;
@@ -945,6 +945,38 @@ fixup_special()
 					if (rn2(4)) mkobj_at(GEM_CLASS, x, y, NO_MKOBJ_FLAGS);
 				}
 				(void)mkgold((long)rn1(1000, 100), x, y);
+			}
+		}
+	}
+	/* ELF QUEST: transfer equip */
+	if (urole.neminum == PM_NECROMANCER && In_quest(&u.uz) && Is_nemesis(&u.uz)) {
+		struct obj *chest;
+		struct obj *obj, *nobj;
+		struct monst *mon;
+		for(chest = fobj; chest; chest = chest->nobj){
+			if(chest->otyp == CHEST && IS_THRONE(levl[chest->ox][chest->oy].typ))
+				break;
+		}
+		if(chest) for(mon = fmon; mon; mon = mon->nmon){
+			if(mon->entangled != SHACKLES)
+				continue;
+			for(obj = mon->minvent; obj; obj = nobj){
+				nobj = obj->nobj;
+				if(obj->otyp == SHACKLES)
+					continue;
+				mon->misc_worn_check &= ~obj->owornmask;
+				update_mon_intrinsics(mon, obj, FALSE, FALSE);
+				if (obj->owornmask & W_WEP){
+					setmnotwielded(mon,obj);
+					MON_NOWEP(mon);
+				}
+				if (obj->owornmask & W_SWAPWEP){
+					setmnotwielded(mon,obj);
+					MON_NOSWEP(mon);
+				}
+				obj->owornmask = 0L;
+				obj_extract_self(obj);
+				add_to_container(chest, obj);
 			}
 		}
 	}

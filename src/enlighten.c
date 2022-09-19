@@ -131,10 +131,10 @@ doattributes()
 			spirits_enlightenment();
 			break;
 		default:
-			return 0;
+			return MOVE_INSTANT;
 		}
 	}
-	return 0;
+	return MOVE_INSTANT;
 }
 
 /* KMH, #conduct
@@ -144,14 +144,14 @@ int
 doconduct()
 {
 	show_conduct(0, FALSE);
-	return 0;
+	return MOVE_INSTANT;
 }
 
 int
 doenlightenment()
 {
 	show_enlightenment(0, FALSE);
-	return 0;
+	return MOVE_INSTANT;
 }
 
 /*
@@ -166,7 +166,7 @@ minimal_enlightenment()
 	menu_item *selected;
 	anything any;
 	int genidx, n;
-	char buf[BUFSZ], buf2[BUFSZ];
+	char buf[BUFSZ], buf2[BUFSZ], racebuf[BUFSZ];
 	static const char untabbed_fmtstr[] = "%-15s: %-12s";
 	static const char untabbed_deity_fmtstr[] = "%-17s%s";
 	static const char tabbed_fmtstr[] = "%s:\t%-12s";
@@ -178,15 +178,21 @@ minimal_enlightenment()
 	deity_fmtstr = iflags.menu_tab_sep ?
 			tabbed_deity_fmtstr : untabbed_deity_fmtstr; 
 	any.a_void = 0;
-	buf[0] = buf2[0] = '\0';
+	buf[0] = buf2[0] = racebuf[0] = '\0';
 	tmpwin = create_nhwindow(NHW_MENU);
 	start_menu(tmpwin);
 	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, iflags.menu_headings, "Starting", FALSE);
 
+	if(is_ent(youracedata)){
+		Sprintf(racebuf, "%s %s", get_ent_species(u.ent_species), urace.noun);
+	} else {
+		Sprintf(racebuf, "%s", urace.noun);
+	}
+
 	/* Starting name, race, role, gender */
 	Sprintf(buf, fmtstr, "name", plname);
 	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
-	Sprintf(buf, fmtstr, "race", urace.noun);
+	Sprintf(buf, fmtstr, "race", racebuf);
 	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
 	Sprintf(buf, fmtstr, "role",
 		(flags.initgend && urole.name.f) ? urole.name.f : urole.name.m);
@@ -198,10 +204,17 @@ minimal_enlightenment()
 	Sprintf(buf, fmtstr, "alignment", align_str(galign(u.ugodbase[UGOD_ORIGINAL])));
 	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
 
+	if(is_ent(youracedata)){
+		racebuf[0] = '\0';
+		Sprintf(racebuf, "%s %s", get_ent_species(u.ent_species), Upolyd ? youmonst.data->mname : urace.noun);
+	} else {
+		Sprintf(racebuf, "%s",Upolyd ? youmonst.data->mname : urace.noun);
+	}
+
 	/* Current name, race, role, gender */
 	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, "", FALSE);
 	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, iflags.menu_headings, "Current", FALSE);
-	Sprintf(buf, fmtstr, "race", Upolyd ? youmonst.data->mname : urace.noun);
+	Sprintf(buf, fmtstr, "race", racebuf);
 	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
 	if (Upolyd) {
 	    Sprintf(buf, fmtstr, "role (base)",
@@ -333,7 +346,12 @@ minimal_enlightenment()
 	end_menu(tmpwin, "Base Attributes");
 	n = select_menu(tmpwin, PICK_ONE, &selected);
 	destroy_nhwindow(tmpwin);
-	return (n>0 ? selected[0].item.a_int : 0);
+	if(n > 0){
+		int picked = selected[0].item.a_int;
+		free(selected);
+		return picked;
+	}
+	return 0;
 }
 
 
@@ -610,7 +628,7 @@ boolean dumping;
 	if(Doubt)
 		enl_msg("You ", "can't", "couldn't", " pray or use clerical magic");
 	/*** Madnesses ***/
-	if(u.usanity < 100 && !ClearThoughts){
+	if(NightmareAware_Sanity < 100 && !BlockableClearThoughts){
 		if (u.umadness&MAD_DELUSIONS){
 			you_have("a tendency to hallucinate, obscuring some monsters' true forms");
 		}
@@ -831,6 +849,8 @@ boolean dumping;
 		if(flags.warntypeg & MG_PRINCE) you_are("aware of the presence of rulers");
 		if(flags.warntypea & MV_TELEPATHIC) you_are("aware of the presence of telepaths");
 		if(flags.warntypea & MA_WERE) you_are("aware of the presence of werecreatures");
+		if(flags.warntypea & MA_G_O_O) you_are("aware of the presence of great old ones");
+		if(flags.warntypea & MA_XORN) you_are("aware of the presence of xorns");
 	}
 	if (Searching) you_have("automatic searching");
 	if (Clairvoyant) you_are("clairvoyant");
@@ -1160,6 +1180,25 @@ resistances_enlightenment()
 		else Sprintf(buf, "Your %s are glowing%s %s.", makeplural(body_part(HAND)), u.umconf > 20 ? " brilliantly" : u.umconf > 10 ? " brightly" : "", hcolor(NH_RED));
 		putstr(en_win, 0, buf);
 	}
+
+	if(is_ent(youracedata)){
+		if(is_ancient_body_ent(youracedata, u.ent_species)) putstr(en_win, 0, "Your ancient body is blow resistant.");
+		if(is_ancient_knowledge_ent(youracedata, u.ent_species)) putstr(en_win, 0, "Your ancient knowledge enhances your combat.");
+		if(is_beautiful_scent_ent(youracedata, u.ent_species)) putstr(en_win, 0, "You smell beautiful.");
+		if(is_coniferous_ent(youracedata, u.ent_species)) putstr(en_win, 0, "You are coniferous.");
+		if(is_decidious_ent(youracedata, u.ent_species)) putstr(en_win, 0, "You are deciduous.");
+		if(is_powerful_build_ent(youracedata, u.ent_species)) putstr(en_win, 0, "You have a larger, powerful, build.");
+		if(is_fast_healing_ent(youracedata, u.ent_species)) putstr(en_win, 0, "You are fast healing.");
+		if(is_spry_ent(youracedata, u.ent_species)) putstr(en_win, 0, "You are spry.");
+		if(is_ent_species(youracedata, ENT_BLUEGUM)) putstr(en_win, 0, "You are a large bluegum.");
+		if(is_ent_species(youracedata, ENT_DOGWOOD)) putstr(en_win, 0, "You are a small quick dogwood.");
+		if(is_ent_species(youracedata, ENT_ELDER)) putstr(en_win, 0, "You are a magically attuned elder.");
+		if(is_ent_species(youracedata, ENT_GINKGO)) putstr(en_win, 0, "You are a hardy ginkgo.");
+		if(is_ent_species(youracedata, ENT_LOCUST)) putstr(en_win, 0, "You are a hard hitting locust.");
+		if(is_ent_species(youracedata, ENT_MIMOSA)) putstr(en_win, 0, "You are a thick barked mimosa.");
+		if(is_ent_species(youracedata, ENT_METHUSELAH)) putstr(en_win, 0, "You are a magical methuselah.");
+
+	}
 	
 	/*** Thoughts ***/
 	if (active_glyph(CLOCKWISE_METAMORPHOSIS)) putstr(en_win, 0, "A clockwise gyre turns in the depths below your id.");
@@ -1215,7 +1254,7 @@ resistances_enlightenment()
 	if(Doubt)
 		putstr(en_win, 0, "You are having a crisis of faith.");
 	/*** Madnesses ***/
-	if(u.usanity < 100 && !ClearThoughts){
+	if(NightmareAware_Sanity < 100 && !BlockableClearThoughts){
 		char messaged = 0;
 		if (u.umadness&MAD_DELUSIONS){
 			putstr(en_win, 0, "You have a tendency to hallucinate.");
@@ -2809,6 +2848,7 @@ boolean dumping;
 	CHECK_ACHIEVE(TOTAL_DRUNK,"Booze Hound")
 	CHECK_ACHIEVE(BOKRUG_QUEST,"Detestable gods: Completed Bokrug's ascension ritual")
 	if(achieve.get_kroo)   put_enl("Kroo's Bling (Acquire the dismal swamp completion prize)");
+	if(achieve.get_raggo)   put_enl("Pet Rock (Acquire the gnomish mines completion prize)");
 	if(achieve.get_poplar) put_enl("Punishing Poplars (Acquire the black forest completion prize)");
 	if(achieve.get_abominable) put_enl("Snowplow (Acquire the ice caves completion prize)Snowplow (Acquire the ice caves completion prize)");
 	if(achieve.get_gilly) put_enl("Gillywhatnow (Acquire the archipelago completion prize)");

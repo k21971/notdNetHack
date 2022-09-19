@@ -339,6 +339,32 @@ struct you {
 	boolean ukinghill; /* records if you are carying the pirate treasure (and are therefor king of the hill) */
 	int protean; /* counter for the auto-polypiling power of the pirate treasure*/
 	int uhouse; /* drow house info */
+	int ent_species; /*species of ent tree*/
+#define ENT_ASH 0
+#define ENT_BEECH 1
+#define ENT_BIRCH 2
+#define ENT_BLUEGUM 3
+#define ENT_CEDAR 4
+#define ENT_CHESTNUT 5
+#define ENT_CYPRESS 6
+#define ENT_DOGWOOD 7
+#define ENT_ELDER 8
+#define ENT_ELM 9
+#define ENT_FIR 10
+#define ENT_GINKGO 11
+#define ENT_LARCH 12
+#define ENT_LOCUST 13
+#define ENT_MAGNOLIA 14
+#define ENT_MAPLE 15
+#define ENT_MIMOSA 16
+#define ENT_METHUSELAH 17
+#define ENT_OAK 18
+#define ENT_POPLAR 19
+#define ENT_REDWOOD 20
+#define ENT_SPRUCE 21
+#define ENT_WILLOW 22
+#define ENT_YEW 23
+#define ENT_MAX_SPECIES ENT_YEW
 	int start_house; /* starting drow house info */
 	struct prop uprops[LAST_PROP+1];
 	int rift_count;
@@ -491,7 +517,8 @@ struct you {
 #define RITUAL_HI_LAW	0x40
 #define RITUAL_DONE		(RITUAL_CHAOS|RITUAL_NEUTRAL|RITUAL_LAW)
 #define HI_RITUAL_DONE	(RITUAL_HI_CHAOS|RITUAL_HI_NEUTRAL|RITUAL_HI_LAW)
-	/* 13 free bits */
+	Bitfield(peaceful_pets,1);	/* pets don't attack peaceful monsters */
+	/* 12 free bits */
 	
 	int oonaenergy;				/* Record the energy type used by Oona in your game. (Worm that Walks switches?) */
 	int brand_otyp;				/* Record the otyp of Fire and Frost Brand in this game */
@@ -544,14 +571,21 @@ struct you {
 	int uartisval;		/* approximate strength of artifacts and gifts bestowed and wished for */
 	int ublessed, ublesscnt;	/* blessing/duration from #pray */
 	long usaccredit;		/* credit towards next gift */
-	int ucultblesscnt[MAX_CULTS];
-#define ugoatblesscnt ucultblesscnt[GOAT_CULT]
-	boolean cult_atten[MAX_CULTS];
+	boolean cult_atten[MAX_CULTS];	/* for having started with a cult */
 #define shubbie_atten		cult_atten[GOAT_CULT]
 #define silver_atten		cult_atten[FLAME_CULT]
 #define yog_sothoth_atten	cult_atten[SOTH_CULT]
 #define good_neighbor_atten	cult_atten[RAT_CULT]
-	long ucultcredit[MAX_CULTS];
+	long ucultcredit[MAX_CULTS];	/* for doing deeds for the cult, spendable */
+#define shubbie_credit			ucultcredit[GOAT_CULT]
+#define silver_credit			ucultcredit[FLAME_CULT]
+#define yog_sothoth_credit		ucultcredit[SOTH_CULT]
+#define good_neighbor_credit	ucultcredit[RAT_CULT]
+	long ucultcredit_total[MAX_CULTS];	/* total credit accumulated for the cult */ 
+#define shubbie_devotion		ucultcredit_total[GOAT_CULT]
+#define silver_devotion			ucultcredit_total[FLAME_CULT]
+#define yog_sothoth_devotion	ucultcredit_total[SOTH_CULT]
+#define good_neighbor_devotion	ucultcredit_total[RAT_CULT]
 	d_level silver_flame_z; 
 	xchar s_f_x, s_f_y; 
 	long lastprayed;

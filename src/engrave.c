@@ -185,8 +185,12 @@ static const char *haluMesg[] = {
 	"If you have time to read this, you should get to the down stairs immediately!", /* Zelda 3 */
 	"Gary was here! Ash is a loser!", /* Pokemon */
 	"Oh, I get it. The real treasure was the people I had executed along the way!", /* A Practical Guide To Evil  */
-	"I don't care if it compiles / Or makes your head explode / I want a messy makefile / I want a billion lines of code", /* Scope Creep by Radiohead by qt */
+	"the cake is a lie", /* Portal */
+	"Beware the Wheelers", /* Ozma of Oz */
+	"The words of the prophets are written on the subway walls and tenement halls", /* The Sound of Silence, Simon and Garfunkel */
 	
+	"I don't care if it compiles / Or makes your head explode / I want a messy makefile / I want a billion lines of code", /* Scope Creep by Radiohead by qt */
+
 	"I see you...",
 		"...do you see me?",
 		"That was a mistake.",
@@ -272,6 +276,7 @@ static const char *haluMesg[] = {
 	"Reach heaven through violence.",/*Kill 6 Billion Demons*/
 		"Kindly ignore my first three answers.",
 		"I will see you in Samura.",
+		"By names she cuts the world as she pleases, and she cuts herself into greater forms still.",
 	"ALL POWER TO THE OLD FLESH!!!!!!! A HOWLING VOID UPON DETRACTORS!!!", /*Awful Hospital*/
 		"You *must* see the IMMACULATE LAD!!",
 	"You are lost. You can never go home.", /* Gollum's Song */
@@ -340,6 +345,9 @@ static const char *haluMesg[] = {
 		"Sand stays.  All else changes.",
 		"We will remember you when you are sand too.",
 	"That is a lesson I will never learn, for I do not believe it.", /* Knights of the Old Republic II */
+	"The one who left his name in the people's souls.",
+		"The one who lived protecting a small happiness with his name known to no one.",
+		"Even on journeys of different ways, people live out their days the best they can.", /* Lunar Legend */
 	"Do not call up any that you can not put down.", /*HP Lovecraft*/
 		"That is not dead, that can eternal lie,",
 		"for with strange aeons even death may die.",
@@ -759,6 +767,7 @@ const char * haluWard[] =  {
 	"a Sharuan Mindharp", /* Star Wars expanded universe */
 	"a winged blade of light", /* Jedi Order symbol */
 	"an inverted scarab beetle", /* Worm */
+	"a stylized eye formed from the letters V, F, and D", /* A Series of Unfortunate Events */
 	
 	/* webcomics */
 	"a Court symbol",	"a Forest symbol",	"the sign of the Wandering Eye", /* Gunnerkrigg Court */
@@ -1883,14 +1892,15 @@ doengward()
  * moonstone  -  6	(orthoclase)	* amber      -	2-2.5
  */
 
-/* return 1 if action took 1 (or more) moves, 0 if error or aborted */
+/* returns standard time-taken constants */
 int
 dogenengrave(mode)
 int mode;
 {
 	boolean dengr = FALSE;	/* TRUE if we wipe out the current engraving */
+	boolean preknown = FALSE;  /* TRUE if we identify the stylus before */
+	boolean postknown = FALSE; /* TRUE if we identify the stylus after */
 	boolean doblind = FALSE;/* TRUE if engraving blinds the player */
-	boolean doknown = FALSE;/* TRUE if we identify the stylus */
 	boolean eow = FALSE;	/* TRUE if we are overwriting oep */
 	boolean jello = FALSE;	/* TRUE if we are engraving in slime */
 	boolean ptext = TRUE;	/* TRUE if we must prompt for engrave text */
@@ -1934,12 +1944,12 @@ int mode;
 	/* Can the adventurer engrave at all? */
 	if(!u.wardsknown && mode == WARD_MODE){
 		You("don't know any wards.");
-		return 0;
+		return MOVE_CANCELLED;
 	} else if(mode == SEAL_MODE){
 		if(Role_if(PM_EXILE)) binderup(); //reaply all known seals, in case of memory loss.
 		if(!u.sealsKnown && !u.specialSealsKnown){
 			You("don't know any seals.");
-			return 0;
+			return MOVE_CANCELLED;
 		}
 	}
 
@@ -1947,31 +1957,31 @@ int mode;
 		if (is_animal(u.ustuck->data)) {
 			if(mode == ENGRAVE_MODE) pline("What would you write?  \"Jonah was here\"?");
 			else pline("What would you do, write \"Jonah was here\"?");
-			return(0);
+			return MOVE_CANCELLED;
 		} else if (is_whirly(u.ustuck->data)) {
 			You_cant("reach the %s.", surface(u.ux,u.uy));
-			return(0);
+			return MOVE_CANCELLED;
 		} else
 			jello = TRUE;
 	} else if (is_lava(u.ux, u.uy)) {
 		You_cant("%s on the lava!", word);
-		return(0);
+		return MOVE_CANCELLED;
 	} /*else if (is_pool(u.ux,u.uy, FALSE) || IS_FOUNTAIN(levl[u.ux][u.uy].typ)) {
 		You_cant("draw on the water!");
-		return(0);
+		return MOVE_CANCELLED;
 	}*/else if(is_pool(u.ux,u.uy, FALSE) && !u.uinwater){
 		You_cant("draw on the water!");
-		return(0);
+		return MOVE_CANCELLED;
 	}
 	if(Weightless || Is_waterlevel(&u.uz)/* in bubble */ /*|| is_sky(u.ux, u.uy)*/) {
 		You_cant("%s in thin air!", word);
-		return(0);
+		return MOVE_CANCELLED;
 	}
-	if (cantwield(youracedata)) {
+	if (nohands(youracedata)) {
 		You_cant("even hold anything!");
-		return(0);
+		return MOVE_CANCELLED;
 	}
-	if (check_capacity((char *)0)) return (0);
+	if (check_capacity((char *)0)) return MOVE_CANCELLED;
 
 	/* One may write with finger, or weapon, or wand, or..., or...
 	 * Edited by GAN 10/20/86 so as not to change weapon wielded.
@@ -1980,7 +1990,7 @@ int mode;
 		otmp = getobj(styluses,	"write with");
 	else
 		otmp = getobj(styluses,	"draw with");
-	if(!otmp) return(0);		/* otmp == zeroobj if fingers */
+	if(!otmp) return MOVE_CANCELLED;		/* otmp == zeroobj if fingers */
 
 	if (otmp == &zeroobj) writer = makeplural(body_part(FINGER));
 	else writer = xname(otmp);
@@ -1990,35 +2000,35 @@ int mode;
 	 */
 	if (!freehand() && otmp != uwep && !otmp->owornmask) {
 		You("have no free %s to %s with!", body_part(HAND), word);
-		return(0);
+		return MOVE_CANCELLED;
 	}
 
 	if (jello) {
 		You("tickle %s with your %s.", mon_nam(u.ustuck), writer);
 		Your("message dissolves...");
-		return(0);
+		return MOVE_CANCELLED;
 	}
 	if (otmp->oclass != WAND_CLASS && !can_reach_floor()) {
 		You_cant("reach the %s!", surface(u.ux,u.uy));
-		return(0);
+		return MOVE_CANCELLED;
 	}
 	if (IS_ALTAR(levl[u.ux][u.uy].typ)) {
 		You("make a motion towards the altar with your %s.", writer);
 		altar_wrath(u.ux, u.uy);
-		return(0);
+		return MOVE_INSTANT;
 	}
 	if(mode == ENGRAVE_MODE){
 		if (IS_GRAVE(levl[u.ux][u.uy].typ)) {
 		    if (otmp == &zeroobj) { /* using only finger */
 			You("would only make a small smudge on the %s.",
 				surface(u.ux, u.uy));
-			return(0);
+			return MOVE_CANCELLED;
 		    } else if (!levl[u.ux][u.uy].disturbed) {
 			You("disturb the undead!");
 			levl[u.ux][u.uy].disturbed = 1;
 			(void) makemon(&mons[PM_GHOUL], u.ux, u.uy, NO_MM_FLAGS);
 			exercise(A_WIS, FALSE);
-			return(1);
+			return MOVE_STANDARD;
 		    }
 		}
 	}
@@ -2093,6 +2103,8 @@ int mode;
 		    case WAN_WISHING:
 		    case WAN_ENLIGHTENMENT:
 			zapnodir(otmp);
+			/* pre/postknown not needed; these will make it known if
+			 * applicable */
 			break;
 
 			/* IMMEDIATE wands */
@@ -2109,12 +2121,14 @@ int mode;
 				"The wand unsuccessfully fights your attempt to draw!"
 				);
 			}
+			postknown = TRUE;
 			break;
 		    case WAN_SLOW_MONSTER:
 			if (!Blind) {
 			   Sprintf(post_engr_text,
 				  	"The bugs on the %s slow down!",
 				   surface(u.ux, u.uy));
+				 postknown = TRUE;
 			}
 			break;
 		    case WAN_SPEED_MONSTER:
@@ -2122,6 +2136,7 @@ int mode;
 			   Sprintf(post_engr_text,
 				  	"The bugs on the %s speed up!",
 				   surface(u.ux, u.uy));
+				 postknown = TRUE;
 			}
 			break;
 		    case WAN_POLYMORPH:
@@ -2129,6 +2144,7 @@ int mode;
 			    if (oep->engr_txt[0]) {
 					type = (xchar)0;	/* random */
 					(void) random_engraving(buf);
+					preknown = TRUE;
 			    }
 				if(oep->ward_id){
 					randWard = rn2(10) ? 1 : rn2(10) ? randHaluWard() : 0;
@@ -2137,6 +2153,8 @@ int mode;
 						randHalu = FALSE;
 					}
 					else randHalu = TRUE;
+
+					preknown = TRUE;
 				}
 			    dengr = TRUE;
 			}
@@ -2178,6 +2196,7 @@ int mode;
 			   Sprintf(post_engr_text,
 				  	"The %s is riddled by bullet holes!",
 				   surface(u.ux, u.uy));
+				 postknown = TRUE;
 			}
 			break;
 
@@ -2189,6 +2208,8 @@ int mode;
 				   Sprintf(post_engr_text,
 						"The grass withers and dies!");
 					levl[u.ux][u.uy].typ = SOIL;
+					/* except if you're aiming at grass, apparently - Amate Urhour */
+					postknown = TRUE;
 				}
 			} else if (!Blind) {
 			   Sprintf(post_engr_text,
@@ -2198,9 +2219,11 @@ int mode;
 			break;
 
 		    case WAN_COLD:
-			if (!Blind)
+			if (!Blind) {
 			    Strcpy(post_engr_text,
 				"A few ice cubes drop from the wand.");
+					postknown = TRUE;
+			}
 			if(!oep || (oep->engr_type != BURN))
 			    break;
 		    case WAN_CANCELLATION:
@@ -2229,7 +2252,7 @@ int mode;
 			    if (flags.verbose)
 				pline("This %s is a wand of digging!",
 				xname(otmp));
-			    doknown = TRUE;
+				preknown = TRUE;
 			}
 			if (!Blind)
 			    Strcpy(post_engr_text,
@@ -2247,9 +2270,9 @@ int mode;
 			ptext = TRUE;
 			type  = BURN;
 			if(!objects[otmp->otyp].oc_name_known) {
-			if (flags.verbose)
-			    pline("This %s is a wand of fire!", xname(otmp));
-			    doknown = TRUE;
+				if (flags.verbose)
+					pline("This %s is a wand of fire!", xname(otmp));
+				preknown = TRUE;
 			}
 			Strcpy(post_engr_text,
 				Blind ?	"You feel the wand heat up." :
@@ -2262,9 +2285,9 @@ int mode;
 			type  = BURN;
 			if(!objects[otmp->otyp].oc_name_known) {
 			    if (flags.verbose)
-				pline("This %s is a wand of lightning!",
+						pline("This %s is a wand of lightning!",
 					xname(otmp));
-			    doknown = TRUE;
+			    preknown = TRUE;
 			}
 			if (!Blind) {
 			    Strcpy(post_engr_text,
@@ -2280,7 +2303,7 @@ int mode;
 		} else /* end if zappable */
 		    if (!can_reach_floor()) {
 			You_cant("reach the %s!", surface(u.ux,u.uy));
-			return(0);
+			return MOVE_CANCELLED;
 		    }
 		break;
 
@@ -2308,7 +2331,7 @@ int mode;
 					}
 					if(levl[u.ux][u.uy].typ == GRASS)
 						levl[u.ux][u.uy].typ = SOIL;
-					return 1;
+					return MOVE_STANDARD;
 				} else {
 					ptext = TRUE;
 					type  = BURN;
@@ -2360,7 +2383,7 @@ int mode;
 		} else if(otmp == ublindf) {
 		    pline(
 		"That is a bit difficult to engrave with, don't you think?");
-		    return(0);
+		    return MOVE_CANCELLED;
 		}
 		switch (otmp->otyp)  {
 		    case MAGIC_MARKER:
@@ -2417,7 +2440,7 @@ int mode;
 	}
 	if(type == DUST && levl[u.ux][u.uy].typ == GRASS){
 		You_cant("make legible marks in grass with just your %s.", writer);
-		return(0);
+		return MOVE_CANCELLED;
 	}
 	if(type == ENGRAVE && levl[u.ux][u.uy].typ == SAND){
 		type = DUST;
@@ -2438,9 +2461,9 @@ int mode;
 	/* End of implement setup */
 
 	/* Identify stylus */
-	if (doknown) {
-	    makeknown(otmp->otyp);
-	    more_experienced(0,10);
+	if (preknown) {
+		makeknown(otmp->otyp);
+		more_experienced(0,10);
 	}
 
 	if (teleengr) {
@@ -2488,13 +2511,13 @@ int mode;
 				"sand" :
 				"dust");
 	    useup(otmp);
-	    return(1);
+	    return MOVE_STANDARD;
 	}
 
 	if (!ptext) {		/* Early exit for some implements. */
 	    if (otmp->oclass == WAND_CLASS && !can_reach_floor())
 		You_cant("reach the %s!", surface(u.ux,u.uy));
-	    return(1);
+	    return MOVE_STANDARD;
 	}
 
 	/* Special effects should have deleted the current engraving (if
@@ -2515,7 +2538,7 @@ int mode;
 					ynqchars, 'y');
 			if (c == 'q') {
 			    pline1(Never_mind);
-			    return(0);
+			    return MOVE_CANCELLED;
 			}
 		    }
 	
@@ -2546,7 +2569,7 @@ int mode;
 					levl[u.ux][u.uy].typ == SAND ? "fused into" :
 				   "burned into") :
 				   "engraved in", surface(u.ux,u.uy));
-				return(1);
+				return MOVE_STANDARD;
 			    } else
 				if ( (type != oep->engr_type) || (c == 'n') ) {
 				    if (!Blind || can_reach_floor())
@@ -2564,14 +2587,14 @@ int mode;
 	/*	    if (type == HEADSTONE) {
 			// headstones are not big enough for wards
 				pline("This headstone is not big enough for drawing one");
-			    return(0);
+			    return MOVE_CANCELLED;
 		    } else*/ if ( (type == oep->ward_type) && !Hallucination && (!Blind ||
 			 (oep->ward_type == BURN) || (oep->ward_type == ENGRAVE)) && oep->ward_id <= LAST_WARD) {
 				c = yn_function("Do you want to reinforce the existing ward?",
 						ynqchars, 'y');
 				if (c == 'q') {
 					pline1(Never_mind);
-					return(0);
+					return MOVE_CANCELLED;
 				}
 		    }
 			
@@ -2602,7 +2625,7 @@ int mode;
 						levl[u.ux][u.uy].typ == SAND ? "fused into" :
 					   "burned into") :
 					  	"engraved in", surface(u.ux,u.uy));
-					return(1);
+					return MOVE_STANDARD;
 					} else
 					if ( (type != oep->ward_type) || (c == 'n') ) {
 						if (!Blind || can_reach_floor())
@@ -2616,7 +2639,7 @@ int mode;
 				int increment;
 				if(oep->complete_wards >= 7 || newWards < 1){
 					pline("The warding sign can be reinforced no further!");
-					return 0;
+					return MOVE_CANCELLED;
 				}
 				/*pline("%d to be added, %d there already", newWards, oep->complete_wards);*/
 				boolean continue_loop = TRUE;
@@ -2670,7 +2693,7 @@ int mode;
 					levl[u.ux][u.uy].typ == SAND ? "fused into" :
 				   "burned into") :
 				  	"engraved in", surface(u.ux,u.uy));
-				return(1);
+				return MOVE_STANDARD;
 				} else
 				if ( (type != oep->ward_type) ) {
 					if (!Blind || can_reach_floor())
@@ -2773,10 +2796,10 @@ int mode;
 			if (!Blind)
 			    pline("%s, then %s.",
 				  Tobjnam(otmp,	"glow"), otense(otmp,	"fade"));
-			return(1);
+			return MOVE_STANDARD;
 		    } else {
 				pline1(Never_mind);
-				return(0);
+				return MOVE_CANCELLED;
 		    }
 		}
 	
@@ -2810,10 +2833,10 @@ int mode;
 				if (!Blind)
 					pline("%s, then %s.",
 					  Tobjnam(otmp,	"glow"), otense(otmp,	"fade"));
-				return(1);
+				return MOVE_STANDARD;
 		    } else {
 				pline1(Never_mind);
-				return(0);
+				return MOVE_CANCELLED;
 		    }
 		}
 		if(u.sealsActive&SEAL_CHUPOCLOPS) unbind(SEAL_CHUPOCLOPS,TRUE); 
@@ -2825,7 +2848,7 @@ int mode;
 		}
 	} else {
 		if(!len){
-			ward = pick_seal();
+			ward = pick_seal("Choose seal:");
 			len = 5;//seals are always 5.
 		}
 		if (ward == 0 || index(ebuf, '\033')) {
@@ -2833,10 +2856,10 @@ int mode;
 				if (!Blind)
 					pline("%s, then %s.",
 					  Tobjnam(otmp,	"glow"), otense(otmp,	"fade"));
-				return(1);
+				return MOVE_STANDARD;
 		    } else {
 				pline1(Never_mind);
-				return(0);
+				return MOVE_CANCELLED;
 		    }
 		}
 		if (eow) {
@@ -3117,13 +3140,19 @@ int mode;
 			}
 		}
 	}
-	if (post_engr_text[0]) pline1(post_engr_text);
+	if (post_engr_text[0]) {
+		pline1(post_engr_text);
+		if (postknown) {
+			makeknown(otmp->otyp);
+			more_experienced(0,10);
+		}
+	}
 
 	if (doblind && !resists_blnd(&youmonst)) {
 		lightning_blind(&youmonst, rnd(50));
 	}
 
-	return(1);
+	return MOVE_STANDARD;
 }
 
 /* return 1 if action took 1 (or more) moves, 0 if error or aborted */
@@ -3378,14 +3407,18 @@ int describe;
 
 		if (n > 0 && selected[0].item.a_int == -1){
 			describe = !describe;
+			free(selected);
 			continue;
 		}
 		if (n > 0 && describe){
 			describe_ward(selected[0].item.a_int);
+			free(selected);
 			continue;
 		}
 		if (n > 0 && !describe){
-			return selected[0].item.a_int;
+			int picked = selected[0].item.a_int;
+			free(selected);
+			return picked;
 		}
 		/* else end menu; no selection made */
 		break;
@@ -3688,7 +3721,8 @@ doseal()
 }
 
 int
-pick_seal()
+pick_seal(prompt)
+const char * prompt;
 {
 	winid tmpwin;
 	int i, n, how;
@@ -3794,14 +3828,17 @@ pick_seal()
 				MENU_UNSELECTED);
 			incntlet = (incntlet != 'z') ? (incntlet + 1) : 'A';
 		}
-		end_menu(tmpwin, "Choose seal:");
+		end_menu(tmpwin, prompt);
 
 		how = PICK_ONE;
 		n = select_menu(tmpwin, how, &selected);
 		destroy_nhwindow(tmpwin);
 
-		if (n > 0)
-			return selected[0].item.a_int;
+		if(n > 0){
+			int picked = selected[0].item.a_int;
+			free(selected);
+			return picked;
+		}
 		/* else end menu, no selection made */
 		break;
 	}while (TRUE);
@@ -4039,7 +4076,7 @@ static const char *epitaphs[] = {
 		"The world began without knowledge, and without knowledge will it end.",
 		"Fear not the dark, my friend. And let the feast begin.",
 	
-	"For every hero commemorated, a thousand martyrs die unmourned and unremembered." /*Warhammer 40k*/
+	"For every hero commemorated, a thousand martyrs die unmourned and unremembered.", /*Warhammer 40k*/
 	
 	"FIQ:  One step from divinity.",
 		"FIQ:  Debugging dNethack, one iron ball to the face at a time.",

@@ -242,11 +242,11 @@ struct monst *magr;
 	}
 
 	if (is_insight_weapon(otmp)){
-		if(youagr && Role_if(PM_MADMAN)){
+		if(youagr && (Role_if(PM_MADMAN) || u.sealsActive&SEAL_OSE)){
 			if(u.uinsight)
 				tmp += rnd(min(u.uinsight, mlev(magr)));
 		}
-		else if(magr && monsndx(magr->data) == PM_MADMAN){
+		else if(magr && insightful(magr->data)){
 			tmp += rnd(mlev(magr));
 		}
 	}
@@ -1392,6 +1392,7 @@ static NEARDATA const int pwep[] =
 	FORCE_PIKE,/*3d6+6/3d8+8*/
 	GOLD_BLADED_VIBROSPEAR,/*2d6+3/2d8+3*/
 	WHITE_VIBROSPEAR,/*2d6+3/2d8+3*/
+	ETHERBLADE,/*3d6*/
 	POLEAXE, /*1d10/2d6*/
 	HALBERD, /*1d10/2d6*/
 	DROVEN_LANCE, /*1d10/1d10*/
@@ -1630,6 +1631,7 @@ static const NEARDATA short hwep[] = {
 	  GOLD_BLADED_VIBROSPEAR,/*2d6+3/2d8+3*/
 	  WHITE_VIBROSPEAR,/*2d6+3/2d8+3*/
 	  LIGHTSABER/*3d8*/,
+	  ETHERBLADE,/*3d6*/
 	  MIRRORBLADE/*your weapon is probably pretty darn good*/,
 	  HEAVY_IRON_BALL,/*1d25/1d25*/
 	  VIBROBLADE,/*2d6+3/2d8+4*/
@@ -1640,6 +1642,7 @@ static const NEARDATA short hwep[] = {
 	  SET_OF_CROW_TALONS/*2d4/2d3/+6 study*/,
 	  TSURUGI/*1d16/1d8+2d6*/, 
 	  MOON_AXE/*variable, 2d6 to 2d12*/,
+	  HIGH_ELVEN_WARSWORD/*1d10+1d6/1d10+1d6*/,
 	  RUNESWORD/*1d10+1d4/1d10+1*/, 
 	  BATTLE_AXE/*1d8+1d4/1d6+2d4*/,
 	  TWO_HANDED_SWORD/*1d12/3d6*/, 
@@ -1650,7 +1653,6 @@ static const NEARDATA short hwep[] = {
 	  RAKUYO/*1d8+1d4/1d8+1d3*/, 
 	  ELVEN_BROADSWORD/*1d6+1d4/1d6+2*/, 
 	  KATANA/*1d10/1d12*/,
-	  HIGH_ELVEN_WARSWORD/*1d10/1d10*/,
 	  CRYSKNIFE/*1d10/1d10*/, 
 	  BESTIAL_CLAW/*1d10/1d8*/, 
 	  VIPERWHIP/*2d4/2d3/poison*/,
@@ -1733,6 +1735,7 @@ static const NEARDATA short hpwep[] = {
 	  GOLD_BLADED_VIBROSPEAR,/*2d6+3/2d8+3*/
 	  WHITE_VIBROSPEAR,/*2d6+3/2d8+3*/
 	  LIGHTSABER/*3d8*/,
+	  ETHERBLADE,/*3d6*/
 	  MIRRORBLADE/*your weapon is probably pretty darn good*/,
 	  HEAVY_IRON_BALL,/*1d25/1d25*/
 	  VIBROBLADE,/*2d6+3/2d8+4*/
@@ -1743,6 +1746,7 @@ static const NEARDATA short hpwep[] = {
 	  SET_OF_CROW_TALONS/*2d4/2d3/+6 study*/,
 	  TSURUGI/*1d16/1d8+2d6*/, 
 	  MOON_AXE/*variable, 2d6 to 2d12*/,
+	  HIGH_ELVEN_WARSWORD/*1d10+1d6/1d10+1d6*/,
 	  RUNESWORD/*1d10+1d4/1d10+1*/, 
 	  BATTLE_AXE/*1d8+1d4/1d6+2d4*/,
 	  TWO_HANDED_SWORD/*1d12/3d6*/, 
@@ -1756,7 +1760,6 @@ static const NEARDATA short hpwep[] = {
 	  HALBERD, /*1d10/2d6*/
 	  KATANA/*1d10/1d12*/,
 	  DROVEN_LANCE, /*1d10/1d10*/
-	  HIGH_ELVEN_WARSWORD/*1d10/1d10*/,
 	  CRYSKNIFE/*1d10/1d10*/, 
 	  BESTIAL_CLAW/*1d10/1d8*/, 
 	  VIPERWHIP/*2d4/2d3/poison*/,
@@ -2509,6 +2512,9 @@ abon()		/* attack bonus for strength & dexterity */
 	else if (str < STR18(100)) sbon = 2;
 	else sbon = 3;
 
+	if(is_ancient_knowledge_ent(youracedata, u.ent_species))
+		str += ACURR(A_WIS)/4;
+
 	if (dex < 4) return(sbon-3);
 	else if (dex < 6) return(sbon-2);
 	else if (dex < 8) return(sbon-1);
@@ -2547,6 +2553,8 @@ struct obj *otmp;
 			bonus *= 2;
 		else if(otmp->otyp == DISKOS && !arms && !mswp)
 			bonus *= 2;
+		else if(is_spear(otmp) && !arms && !mswp)
+			bonus *= 1.5;
 		else if(otmp->otyp == ISAMUSEI && !arms && !mswp)
 			bonus *= 1.5;
 		else if(otmp->otyp == KATANA && !arms && !mswp)
@@ -2646,8 +2654,12 @@ struct obj *otmp;
 	else if (str < STR19(22)) bonus = 6;
 	else if (str < STR19(25)) bonus = 7;
 	else /*  str ==25*/bonus = 8;
+
+	if(is_ent_species(youracedata, ENT_LOCUST)) bonus += 2;
+	if(is_ancient_knowledge_ent(youracedata, u.ent_species))
+		bonus += ACURR(A_WIS)/4;
 	
-	if(u.umadness&MAD_RAGE && !ClearThoughts){
+	if(u.umadness&MAD_RAGE && !BlockableClearThoughts){
 		bonus += (Insanity)/10;
 	}
 	if(otmp){
@@ -2823,7 +2835,7 @@ could_advance(skill)
 int skill;
 {
     return !P_RESTRICTED(skill)
-	    && P_SKILL(skill) < P_MAX_SKILL(skill) && 
+	    && P_SKILL_CORE(skill, FALSE) < P_MAX_SKILL_CORE(skill, FALSE) && 
 	    P_ADVANCE(skill) >=
 		(unsigned) practice_needed_to_advance(OLD_P_SKILL(skill))
 		&& practice_needed_to_advance(OLD_P_SKILL(skill)) > 0
@@ -2837,7 +2849,7 @@ peaked_skill(skill)
 int skill;
 {
     return !P_RESTRICTED(skill)
-	    && P_SKILL(skill) >= P_MAX_SKILL(skill) && (
+	    && P_SKILL_CORE(skill, FALSE) >= P_MAX_SKILL_CORE(skill, FALSE) && (
 	    (P_ADVANCE(skill) >=
 		(unsigned) practice_needed_to_advance(OLD_P_SKILL(skill))));
 }
@@ -2851,7 +2863,7 @@ int skill;
 	u.skill_record[u.skills_advanced++] = skill;
 	/* subtly change the advance message to indicate no more advancement */
 	You("are now %s skilled in %s.",
-	P_SKILL(skill) >= P_MAX_SKILL(skill) ? "most" : "more",
+	P_SKILL_CORE(skill, FALSE) >= P_MAX_SKILL_CORE(skill, FALSE) ? "most" : "more",
 	P_NAME(skill));
 }
 
@@ -3073,7 +3085,7 @@ int enhance_skill(boolean want_dump)
 	    }
 #endif
 	} while (speedy && n > 0);
-	return 0;
+	return MOVE_CANCELLED;
 }
 
 /*
@@ -3249,9 +3261,8 @@ struct obj *obj;
 		return (P_NONE);
 
 #define CHECK_ALTERNATE_SKILL(alt_skill) {\
-	if(P_SKILL(type) > P_SKILL(alt_skill));\
-	else if(P_MAX_SKILL(type) >= P_MAX_SKILL(alt_skill));\
-	else type = alt_skill;\
+	if(P_SKILL(type) < P_SKILL(alt_skill)) type = alt_skill;\
+	else if(P_SKILL(type) == P_SKILL(alt_skill) && P_MAX_SKILL(type) < P_MAX_SKILL(alt_skill)) type = alt_skill;\
 }
 	type = objects[obj->otyp].oc_skill;
 	
@@ -3272,6 +3283,21 @@ struct obj *obj;
 	}
 	else if(obj->oartifact == ART_WAND_OF_ORCUS){
 		type = P_MACE;
+	}
+	else if(obj->oartifact == ART_MASAMUNE){
+		for(int skl = P_FIRST_WEAPON; skl <= P_LAST_WEAPON; skl++){
+			/* Ranged weapon skills are intermixed with melee skills :( */
+			if(skl == P_BOW
+				|| skl == P_SLING
+				|| skl == P_FIREARM
+				|| skl == P_CROSSBOW
+				|| skl == P_DART
+				|| skl == P_SHURIKEN
+				|| skl == P_BOOMERANG
+			)
+				continue;
+			CHECK_ALTERNATE_SKILL(skl)
+		}
 	}
 
 	if(obj->otyp == DOUBLE_LIGHTSABER){

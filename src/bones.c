@@ -102,6 +102,15 @@ boolean restore;
 			if(otmp->oclass == SPBOOK_CLASS){
 				set_object_color(otmp);
 			}
+			/*Make sure the life-saving effect is unused for this player*/
+			if (otmp->oartifact == ART_EARTH_CRYSTAL
+				|| otmp->oartifact == ART_FIRE_CRYSTAL
+				|| otmp->oartifact == ART_WATER_CRYSTAL
+				|| otmp->oartifact == ART_AIR_CRYSTAL
+				|| otmp->oartifact == ART_BLACK_CRYSTAL
+			) {
+				otmp->oeroded3 = 0;
+			}
 		}
 		if (!restore) {
 			/* do not zero out o_ids for ghost levels anymore */
@@ -155,6 +164,11 @@ boolean restore;
 				if(otmp->lamplit) lightsaber_deactivate(otmp,TRUE);
 			}
 			if (otmp->oartifact == ART_ANNULUS) { /*Convert the Annulus to an ordinary whatever*/
+				otmp->oartifact = 0;
+				rem_ox(otmp, OX_ENAM);
+				otmp->owt = weight(otmp);
+			}
+			if (otmp->oartifact == ART_ILLITHID_STAFF || otmp->oartifact == ART_ELDER_CEREBRAL_FLUID) { /*Convert ACU special artis to oridnary items */
 				otmp->oartifact = 0;
 				rem_ox(otmp, OX_ENAM);
 				otmp->owt = weight(otmp);
@@ -566,6 +580,7 @@ struct obj *corpse;
 		drop_upon_death(mtmp, (struct obj *)0, x, y);
 		m_dowear(mtmp, TRUE);
 		init_mon_wield_item(mtmp);
+		m_level_up_intrinsic(mtmp);
 	}
 	if (mtmp) {
 		mtmp->m_lev = (u.ulevel ? u.ulevel : 1);

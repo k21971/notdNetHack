@@ -94,6 +94,7 @@ Etherealoid race
 	Does not hunger
 	Cannot eat
 	Cannot wear armor
+		Can hold a shield
 	Flys
 	Receives displacement at xlvl 7
 	Gains +1 ac per experience level
@@ -111,6 +112,57 @@ Etherealoid race
 	XP lvl is effectively gained at half the rate
 	50% of the time killing a monster will heal you for a 1/8 of the xp it
 	would have provided, or 5 hp if that is larger
+Ent race
+	Lawful/neutral
+	Stat caps
+		str,dex,con,int,wis,cha
+		25, 16, 25, 14, 14, 14
+	Always start at least 19 str
+	Can pick up and throw boulders
+	HUGE
+	Better hp growth than dwarves
+	Base speed 10
+	Have a random species which determines the additional properties they get
+	Special Properties
+		Ancient Body	
+			Body is very ancient and blow resistant even at its weakest points. Reroll negative AC like Balam
+			Ash, Blue Gum, Elm, Locust, Methuselah, Redwood 	
+		Ancient Knowledge
+			old and wise, dbon and abon increase based on wisdom/4 floored
+			Elder, Oak, Willow, Yew
+		Beautiful Scent
+			Release a good smell that calms enemies, when landing an attack against a monster with a respiratory system has a 1/5 chance of discouraging them by d(1+ xlvl/7) up to xlvl
+			Chestnut, Dogwood, Magnolia, Mimosa, Poplar
+		Coniferous 	
+			From cold climates, cold resistance. also protect invent from cold damage
+			Cedar, Cypress, Fir, Methuselah, Redwood, Yew
+		Deciduous 
+			Strong willed and patient from time spent in forest, receives amnesia forgetness at half of the rate and take sanity damage at half rate.
+			Ash, Beech, Birch, Bluegum, Chestnut, Dogwood, Elder, Elm, Ginkgo, Larch, Locust, Magnolia, Maple, Mimosa, Oak, Poplar, Willow
+		Powerful Build
+			Effectively one size larger for attacks, like ymir and caveman
+			Blue Gum, Chestnut, Ginkgo, Locust, Magnolia, Oak, Redwood
+		Fast Healing
+			Heal at double the natural rate
+			Ash, Beech, Birch, Cedar, Elder, Elm, Fir, Larch, Ginkgo, Maple, Oak, Yew
+		Spry
+			12 speed instead of 10 speed
+			Cypress, Fir, Poplar, Spruce, Dogwood, Elm
+	Some tree species have special abilities of their own
+		Bluegum
+			Get another effective size larger
+		Dogwood
+			Effectively a size smaller for weapons but starts with intrinsic speed
+		Elder
+			Built in robe effect like incantifiers
+		Gingko 
+			Poison res
+		Locust
+			Receive a flat +2 to base strength dbon
+		Mimosa
+			+1 DR in every slot
+		Methuselah
+			Spell boost intrinsic
 Monk changes
 	Can set attack styles with #style
 		Surge punch 
@@ -234,6 +286,13 @@ Anachrononaut changes
 		Flamethrower
 			Sprays burning oil splashes doing (6+multishot bonus)d6
 			Uses a charge system and uses 1 charge per use
+	Eth ana - 
+		Etherblade
+			Polearm type weapon, can be used in melee
+			3d6 vs small and large
+			Can be charged and fired with F to shoot a 3d6 blast of darkness
+		+5 ring of protection
+		Can get expert in polearms and darts
 Added armorsmiths
 		Armorsmiths are meant to address the weird gap caused by
 		upgrade kits for strangely sized races
@@ -251,6 +310,9 @@ Added armorsmiths
 			Change the shape (barded/segmented/centaur) of a piece
 			of armor
 			Requires a corpse or figurine reference item if not using your shape
+		Scales to Shield
+			Turns dragon scales into the equivalent shield without requiring
+			wearing it. -- useful for eths
 Dungeon Changes
 	Added adventure branches and the village
 		Dlvl4 is now a village of friendlies of your race
@@ -265,6 +327,8 @@ Dungeon Changes
 				Fight the tulip poplar for the poplar punisher
 					+2d6 dmg quarterstaff
 			Gnomish Mines
+				Fight Raggo the Gnome King, Ruggo's crazed brother 
+				for his lucky pet rock
 			Dismal Swamp
 				Fight Kroo the Kobold King and his court
 					very fast speed ring of poison
@@ -274,6 +338,7 @@ Dungeon Changes
 					emerald with slotless magical
 					breathing and swimming
 		Go play and find out!
+	Collapsed mineshaft branch added, random mines end level accessible from oracle level
 	Replace sokoban with lokobanv2
 		Single soko level with a few crates, no pits, and a lokoban pinata
 		Lokoban pinata 

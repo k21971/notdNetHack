@@ -128,6 +128,13 @@ static struct trobj Anachrononaut_Sal[] = {
 	{ PROTEIN_PILL, 0, FOOD_CLASS, 10, 0 },
 	{ 0, 0, 0, 0, 0 }
 };
+static struct trobj Anachrononaut_Eth[] = {
+	{ ETHERBLADE,  3, WEAPON_CLASS, 1, 0 },
+	{ RIN_PROTECTION,  5, RING_CLASS, 1, 0 },
+	{ POWER_PACK, 0, TOOL_CLASS, 10, 0 },
+	{ MASK, 0, TOOL_CLASS, 1, 0 },
+	{ 0, 0, 0, 0, 0 }
+};
 static struct trobj Anachrononaut_Inc[] = {
 	{ LIGHTSABER,  3, WEAPON_CLASS, 1, 0 },
 	{ ELVEN_TOGA, 1, ARMOR_CLASS, 1, 0 },
@@ -917,9 +924,7 @@ static const struct def_skill Skill_Ana[] = {
     { P_SABER, P_EXPERT },		{ P_LONG_SWORD,  P_BASIC },
     { P_CLUB, P_SKILLED },		{ P_QUARTERSTAFF, P_EXPERT },
 	{ P_BROAD_SWORD, P_EXPERT },{ P_HAMMER, P_BASIC },
-//#ifdef FIREARMS
-    { P_FIREARM, P_EXPERT },
-//#endif
+    { P_FIREARM, P_EXPERT }, { P_POLEARMS, P_BASIC },
     { P_DART, P_EXPERT },		{ P_CROSSBOW, P_SKILLED },
     { P_WHIP, P_SKILLED },		 { P_BOOMERANG, P_EXPERT },
     { P_ATTACK_SPELL, P_SKILLED },	{ P_HEALING_SPELL, P_SKILLED },
@@ -1021,6 +1026,11 @@ static const struct def_skill Skill_Droid_Ana[] = {
     // { FFORM_NIMAN, P_BASIC },			{ FFORM_JUYO,  P_EXPERT },
     // { P_NONE, 0 }
 // };
+
+static const struct def_skill Skill_Eth_Ana[] = {
+    { P_POLEARMS, P_EXPERT }, { P_DART, P_EXPERT },
+    { P_NONE, 0 }
+};
 
 static const struct def_skill Skill_All_Ana[] = {
     { P_SHII_CHO, P_EXPERT },		{ P_MAKASHI,  P_EXPERT },
@@ -1669,6 +1679,28 @@ int count;
 }
 #endif
 
+static void
+set_ent_species(){
+	int type = rn2(ENT_MAX_SPECIES);
+	u.ent_species = type;
+	switch(type){
+		case ENT_DOGWOOD:
+			HFast |= FROMRACE;
+		break;
+		case ENT_GINKGO:
+			HPoison_resistance |= FROMRACE;
+		break;
+		case ENT_METHUSELAH:
+			HSpellboost |= FROMRACE;
+		break;
+		case ENT_WILLOW:
+			HWeldproof |= FROMRACE;
+		break;
+	}
+	if(is_coniferous_ent(youracedata, u.ent_species))
+		HCold_resistance |= FROMRACE;
+}
+
 
 void
 u_init()
@@ -1706,42 +1738,46 @@ u_init()
 	u.quivered_spell = 0;
 	//u.wardsknown = ~0; //~0 should be all 1s, and is therefore debug mode.
 
-#if 0	/* documentation of more zero values as desirable */
-	u.usick_cause[0] = 0;
-	u.uluck  = u.moreluck = 0;
-# ifdef TOURIST
-	uarmu = 0;
-# endif
-	uarm = uarmc = uarmh = uarms = uarmg = uarmf = 0;
-	uwep = uball = uchain = uleft = uright = urope = 0;
-	uswapwep = uquiver = 0;
-	u.twoweap = 0;
-	u.ublessed = 0;				/* not worthy yet */
-	u.ugifts   = 0;				/* no divine gifts bestowed */
-	u.uartisval = 0;			/* no artifacts directly acquired */
-	u.ucarinc = 0;
-	u.uacinc = 0;
-// ifdef ELBERETH
-	u.uevent.uhand_of_elbereth = 0;
-// endif
-	u.uevent.utook_castle = 0;
-	u.uevent.uunknowngod = 0;
-	u.uevent.uheard_tune = 0;
-	u.uevent.uopened_dbridge = 0;
-	u.uevent.udemigod = 0;		/* not a demi-god yet... */
 	u.udg_cnt = 0;
 	u.ill_cnt = 0;
-	u.yel_cnt = 0;
-	/*Ensure that the HP and energy fields are zeroed out*/
-	u.uhp = u.uhpmax = u.uhprolled = u.uhpmultiplier = u.uhpbonus = u.uhpmod = 0;
-	u.uen = u.uenmax = u.uenrolled = u.uenmultiplier = u.uenbonus = 0;
-	u.uhp_real = u.uhpmax_real = u.uhprolled_real = u.uhpmultiplier_real = u.uhpbonus_real = u.uhpmod_real = 0;
-	u.uen_real = u.uenmax_real = u.uenrolled_real = u.uenmultiplier_real = u.uenbonus_real = 0;
+	u.yel_cnt = 555;
+
+// #if 0	/* documentation of more zero values as desirable */
+	// u.usick_cause[0] = 0;
+	// u.uluck  = u.moreluck = 0;
+// # ifdef TOURIST
+	// uarmu = 0;
+// # endif
+	// uarm = uarmc = uarmh = uarms = uarmg = uarmf = 0;
+	// uwep = uball = uchain = uleft = uright = urope = 0;
+	// uswapwep = uquiver = 0;
+	// u.twoweap = 0;
+	// u.ublessed = 0;				/* not worthy yet */
+	// u.ugifts   = 0;				/* no divine gifts bestowed */
+	// u.uartisval = 0;			/* no artifacts directly acquired */
+	// u.ucarinc = 0;
+	// u.uacinc = 0;
+// // ifdef ELBERETH
+	// u.uevent.uhand_of_elbereth = 0;
+// // endif
+	// u.uevent.utook_castle = 0;
+	// u.uevent.uunknowngod = 0;
+	// u.uevent.uheard_tune = 0;
+	// u.uevent.uopened_dbridge = 0;
+	// u.uevent.udemigod = 0;		/* not a demi-god yet... */
+	// u.udg_cnt = 0;
+	// u.ill_cnt = 0;
+	// u.yel_cnt = 555; /*ineffective due to ifdef 0 */
+	// /*Ensure that the HP and energy fields are zeroed out*/
+	// u.uhp = u.uhpmax = u.uhprolled = u.uhpmultiplier = u.uhpbonus = u.uhpmod = 0;
+	// u.uen = u.uenmax = u.uenrolled = u.uenmultiplier = u.uenbonus = 0;
+	// u.uhp_real = u.uhpmax_real = u.uhprolled_real = u.uhpmultiplier_real = u.uhpbonus_real = u.uhpmod_real = 0;
+	// u.uen_real = u.uenmax_real = u.uenrolled_real = u.uenmultiplier_real = u.uenbonus_real = 0;
 	
-	u.mh = u.mhmax = u.mhrolled = u.mtimedone = 0;
-	u.uz.dnum = u.uz0.dnum = 0;
-	u.utotype = 0;
-#endif	/* 0 */
+	// u.mh = u.mhmax = u.mhrolled = u.mtimedone = 0;
+	// u.uz.dnum = u.uz0.dnum = 0;
+	// u.utotype = 0;
+// #endif	/* 0 */
 
 	u.uz.dlevel = 1;
 	u.uz0.dlevel = 0;
@@ -1925,7 +1961,6 @@ u_init()
 	init_uhunger();
 	for (i = 0; i <= MAXSPELL; i++) spl_book[i].sp_id = NO_SPELL;
 	u.ublesscnt = 300;			/* no prayers just yet */
-	u.ugoatblesscnt = 300;			/* goat counter also starts high */
 	u.ualign.type = aligns[flags.initalign].value;
 	u.ualign.god = u.ugodbase[UGOD_CURRENT] = u.ugodbase[UGOD_ORIGINAL] = align_to_god(u.ualign.type);
 	u.ulycn = NON_PM;
@@ -1984,6 +2019,7 @@ u_init()
 		else if(Race_if(PM_HALF_DRAGON)) ini_inv(Anachrononaut_Hlf);
 		else if(Race_if(PM_GNOME)) ini_inv(Anachrononaut_Gno);
 		else if(Race_if(PM_SALAMANDER)) ini_inv(Anachrononaut_Sal);
+		else if(Race_if(PM_ETHEREALOID)) ini_inv(Anachrononaut_Eth);
 		else if(Race_if(PM_ANDROID)){
 			if(!flags.female) ini_inv(Anachrononaut_Mal_Clk);
 			else ini_inv(Anachrononaut_Fem_Clk);
@@ -2059,6 +2095,8 @@ u_init()
 			skill_init(Skill_Ana);
 			skill_add(Skill_All_Ana);
 		}
+		if(Race_if(PM_ETHEREALOID))
+			skill_add(Skill_Eth_Ana);
 		/* lawful god is actually Ilsensine */
 		urole.lgod = GOD_ILSENSINE;
 		
@@ -2257,7 +2295,15 @@ u_init()
 		case 2: Monk[M_BOOK].trotyp = SPE_SLEEP; break;
 		}
 		ini_inv(Monk);
+		knows_object(QUARTERSTAFF);
 		knows_object(KHAKKHARA);
+		knows_object(DOUBLE_SWORD);
+		knows_object(CHAKRAM);
+		knows_object(SET_OF_CROW_TALONS);
+		knows_object(NUNCHAKU);
+		knows_object(BESTIAL_CLAW);
+		knows_object(SHURIKEN);
+		knows_object(KATAR);
 		// if(!rn2(5)) ini_inv(Magicmarker);
 		// else if(!rn2(10)) ini_inv(Lamp);
 		// knows_class(ARMOR_CLASS);
@@ -2856,6 +2902,9 @@ u_init()
 			break;
 		}
 	}
+	if(Race_if(PM_ENT)){
+		set_ent_species();
+	}
 	/* Fix up the alignment quest nemesi */
 	mons[PM_OONA].mcolor = (u.oonaenergy == AD_FIRE) ? CLR_RED 
 						 : (u.oonaenergy == AD_COLD) ? CLR_CYAN 
@@ -2934,7 +2983,8 @@ register struct trobj *trop;
 			set_material_gm(obj, objects[otyp].oc_material);
 
 			//no armor for etherealoids
-			if(Race_if(PM_ETHEREALOID) && objects[otyp].oc_class == ARMOR_CLASS){
+			if(Race_if(PM_ETHEREALOID) && objects[otyp].oc_class == ARMOR_CLASS && !is_shield(obj)){
+				obfree(obj, (struct obj*) 0);
 				trop++;
 				continue;	
 			}	
@@ -2969,6 +3019,8 @@ register struct trobj *trop;
 				obj->oerodeproof = 1;
 				obj->rknown = 1;
 			}
+			if(Role_if(PM_ANACHRONONAUT) && Race_if(PM_ETHEREALOID) && obj->otyp == MASK)
+				obj->corpsenm = PM_ETHEREALOID;
 			if(obj->otyp == HEAVY_MACHINE_GUN && Role_if(PM_ANACHRONONAUT) && Race_if(PM_DWARF)){
 				set_material_gm(obj, MITHRIL);
 			}
@@ -3268,6 +3320,10 @@ register struct trobj *trop;
 			setworn(obj, W_TOOL);
 		}
 		
+		if(Role_if(PM_ANACHRONONAUT) && Race_if(PM_ETHEREALOID) && obj->otyp == RIN_PROTECTION && !uleft){
+			setworn(obj, W_RINGL);
+		}
+		
 		if(obj->oclass == ARMOR_CLASS){
 			if (is_shield(obj) && !uarms) {
 				setworn(obj, W_ARMS);
@@ -3334,6 +3390,8 @@ scatter_weapons(){
 		mtmp = makemon(&mons[PM_ANDROID], xdnstair, ydnstair, MM_ADJACENTOK|MM_EDOG);
 		initedog(mtmp);
 		EDOG(mtmp)->loyal = TRUE;
+		EDOG(mtmp)->waspeaceful = TRUE;
+		mtmp->mpeacetime = 0;
 		nlev = rnd(stronghold_level.dlevel-10)+10;
 		if(nlev >= 8){
 			//Landed in poly-trap-land, and found a random CoMR on the ground nearby
@@ -3356,6 +3414,8 @@ scatter_weapons(){
 		mtmp = makemon(&mons[PM_GYNOID], xdnstair, ydnstair, MM_ADJACENTOK|MM_EDOG);
 		initedog(mtmp);
 		EDOG(mtmp)->loyal = TRUE;
+		EDOG(mtmp)->waspeaceful = TRUE;
+		mtmp->mpeacetime = 0;
 		nlev = rnd(stronghold_level.dlevel-10)+10;
 		// pline("going to %d",nlev);
 		if(nlev >= 8){

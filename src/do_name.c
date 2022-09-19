@@ -530,7 +530,7 @@ register struct obj *obj;
 	(void)mungspaces(buf);
 
 	/* relax restrictions over proper capitalization for artifacts */
-	if ((aname = artifact_name(buf, &objtyp, NULL)) != 0 && objtyp == obj->otyp)
+	if ((aname = artifact_name(buf, &objtyp, NULL)) != 0)
 		Strcpy(buf, aname);
 
 	if (obj->oartifact) {
@@ -675,6 +675,10 @@ const char *name;
 		/* property */
 		if (obj->oartifact == ART_IBITE_ARM)
 			add_oprop(obj, OPROP_CCLAW);
+		
+		/* symbol */
+		if (obj->oartifact == ART_LOMYA)
+			obj->oward = LOLTH_SYMBOL;
 		
 		/* size */
 		if (obj->oartifact && artilist[obj->oartifact].size != MZ_DEFAULT)
@@ -919,6 +923,7 @@ boolean full;
 		else if (full && template == SKELIFIED) 		Sprintf(buf2, "%s's skeleton", buf);
 		else if (full && template == CRYSTALFIED)		Sprintf(buf2, "%s's vitrean", buf);
 		else if (full && template == WHISPERING)		Sprintf(buf2, "%s's whispers", buf);
+		else if (full && template == MINDLESS) 			Sprintf(buf2, "%s's husk", buf);
 		else if (full && template == FRACTURED)			Sprintf(buf2, "%s, Witness of the Fracture", buf);
 		else if (full && template == ILLUMINATED)		Sprintf(buf2, "%s the Illuminated", buf);
 		else if (full && template == VAMPIRIC)			Sprintf(buf2, "%s, vampire", buf);
@@ -941,6 +946,7 @@ boolean full;
 		else if (full && template == SKELIFIED)			Sprintf(buf2, "%s skeleton", buf);
 		else if (full && template == CRYSTALFIED)		Sprintf(buf2, "%s vitrean", buf);
 		else if (full && template == WHISPERING)		Sprintf(buf2, "%s whispers", buf);
+		else if (full && template == MINDLESS)			Sprintf(buf2, "%s husk", buf);
 		else if (full && template == FRACTURED)			Sprintf(buf2, "fractured %s", buf);
 		else if (full && template == ILLUMINATED)		Sprintf(buf2, "illuminated %s", buf);
 		else if (full && template == VAMPIRIC)			Sprintf(buf2, "%s vampire", buf);
@@ -1063,7 +1069,7 @@ boolean called;
 	if (article == ARTICLE_YOUR && !mtmp->mtame)
 	    article = ARTICLE_THE;
 
-	do_hallu = (Hallucination) && !(suppress & SUPPRESS_HALLUCINATION);
+	do_hallu = (Hallucination || Delusion(mtmp)) && !(suppress & SUPPRESS_HALLUCINATION);
 	do_invis = mtmp->minvis && !(suppress & SUPPRESS_INVISIBLE);
 	do_it = !canspotmon(mtmp) && 
 	    article != ARTICLE_YOUR &&
@@ -1140,8 +1146,9 @@ boolean called;
 		if(is_drow(mdat)){
 			struct obj *otmp;
 			for (otmp = mtmp->minvent; otmp; otmp = otmp->nobj) {
-				if ((otmp->otyp == DROVEN_PLATE_MAIL || otmp->otyp == DROVEN_CHAIN_MAIL || otmp->otyp == CONSORT_S_SUIT) 
-					&& otmp->owornmask & mtmp->misc_worn_check && otmp->oward){
+				if (is_readable_armor_otyp(otmp->otyp)
+					&& otmp->owornmask & mtmp->misc_worn_check && otmp->oward
+				){
 						Sprintf(eos(buf), "%s ", getDrowHouse(otmp->oward));
 						name_at_start = FALSE;
 					}
@@ -1203,7 +1210,7 @@ boolean called;
 			if(is_drow(mdat)){
 				struct obj *otmp;
 				for (otmp = mtmp->minvent; otmp; otmp = otmp->nobj) {
-					if ((otmp->otyp == DROVEN_PLATE_MAIL || otmp->otyp == DROVEN_CHAIN_MAIL || otmp->otyp == CONSORT_S_SUIT) 
+					if (is_readable_armor_otyp(otmp->otyp) 
 						&& otmp->owornmask & mtmp->misc_worn_check && otmp->oward){
 							Sprintf(eos(buf), "%s ", getDrowHouse(otmp->oward));
 							name_at_start = FALSE;
@@ -1266,8 +1273,9 @@ boolean called;
 		if(is_drow(mdat)){
 			struct obj *otmp;
 			for (otmp = mtmp->minvent; otmp; otmp = otmp->nobj) {
-				if ((otmp->otyp == DROVEN_PLATE_MAIL || otmp->otyp == DROVEN_CHAIN_MAIL || otmp->otyp == CONSORT_S_SUIT) 
-					&& otmp->owornmask & mtmp->misc_worn_check && otmp->oward){
+				if (is_readable_armor_otyp(otmp->otyp)
+					&& otmp->owornmask & mtmp->misc_worn_check && otmp->oward
+				){
 						Sprintf(eos(buf), "%s ", getDrowHouse(otmp->oward));
 						name_at_start = FALSE;
 					}
@@ -1575,12 +1583,13 @@ char *outbuf;
     /* high priest(ess)'s identity is concealed on the Astral Plane,
        unless you're adjacent (overridden for hallucination which does
        its own obfuscation) */
-    if ( (mon->mtyp == PM_HIGH_PRIEST || mon->mtyp == PM_ELDER_PRIEST) && !(Hallucination) &&
-	    Is_astralevel(&u.uz) && distu(mon->mx, mon->my) > 2) {
-	Strcpy(outbuf, article == ARTICLE_THE ? "the " : "");
-	Strcat(outbuf, mon->female ? "high priestess" : "high priest");
+	if ( (mon->mtyp == PM_HIGH_PRIEST || mon->mtyp == PM_ELDER_PRIEST) && !(Hallucination || Delusion(mon)) &&
+	    Is_astralevel(&u.uz) && distu(mon->mx, mon->my) > 2
+	) {
+		Strcpy(outbuf, article == ARTICLE_THE ? "the " : "");
+		Strcat(outbuf, mon->female ? "high priestess" : "high priest");
     } else {
-	Strcpy(outbuf, x_monnam(mon, article, (char *)0, 0, TRUE));
+		Strcpy(outbuf, x_monnam(mon, article, (char *)0, 0, TRUE));
     }
     return outbuf;
 }
@@ -1610,6 +1619,65 @@ struct monst *other_mon;
 	if (mon == &youmonst)
 		return "you";
 	return mon_nam(mon);
+}
+
+char * 
+get_ent_species(species)
+int species;
+{
+	switch(species){
+		case ENT_ASH:
+			return "ash";
+		case ENT_BEECH:
+			return "beech";
+		case ENT_BIRCH:
+			return "birch";
+		case ENT_BLUEGUM:
+			return "bluegum";
+		case ENT_CEDAR:
+			return "cedar";
+		case ENT_CHESTNUT:
+			return "chestnut";
+		case ENT_CYPRESS:
+			return "cypress";
+		case ENT_DOGWOOD:
+			return "dogwood";
+		case ENT_ELDER:
+			return "elder";
+		case ENT_ELM:
+			return "elm";
+		case ENT_FIR:
+			return "fir";
+		case ENT_GINKGO:
+			return "gingko";
+		case ENT_LARCH:
+			return "larch";
+		case ENT_LOCUST:
+			return "locust";
+		case ENT_MAGNOLIA:
+			return "magnolia";
+		case ENT_MAPLE:
+			return "maple";
+		case ENT_MIMOSA:
+			return "mimosa";
+		case ENT_METHUSELAH:
+			return "methuselah";
+		case ENT_OAK:
+			return "oak";
+		case ENT_POPLAR:
+			return "poplar";
+		case ENT_REDWOOD:
+			return "redwood";
+		case ENT_SPRUCE:
+			return "spruce";
+		case ENT_WILLOW:
+			return "willow";
+		case ENT_YEW:
+			return "yew";
+		default:
+			return "strange";
+	}
+
 }
 
 char *
@@ -1873,6 +1941,9 @@ static const char * const bogusmons[] = {
 	"obelus",
 	"miniature blimp",
 	"lungfish",
+
+	"hard-to-destroy reptile",
+		"shy guy",								/* SCP Foundation */
 
         "apostrophe golem", "angry flower named Bob",
         "bonsai-kitten", "Boxxy", "lonelygirl15",

@@ -337,8 +337,9 @@ NEARDATA extern coord bhitpos;	/* place where throw or zap hits or stops */
 #define BEAT 22
 #define BONES 23
 #define EAR 24
-#define CREAK 25
-#define CRACK 26
+#define EARS 25
+#define CREAK 26
+#define CRACK 27
 
 #define BALL_IN_MON	(u.uswallow && uball && uball->where == OBJ_FREE)
 #define CHAIN_IN_MON	(u.uswallow && uchain && uchain->where == OBJ_FREE)
@@ -401,7 +402,7 @@ NEARDATA extern coord bhitpos;	/* place where throw or zap hits or stops */
 
 /* negative armor class is randomly weakened to prevent invulnerability */
 #define ROLL_NEG10(AC)	(-rnd(-(AC+10)) - 10)
-#define AC_VALUE(AC)	((AC) >= -10 ? (AC) : (u.sealsActive&SEAL_BALAM || activeFightingForm(FFORM_SORESU)) ? min_ints(ROLL_NEG10(AC),ROLL_NEG10(AC)) : ROLL_NEG10(AC))
+#define AC_VALUE(AC)	((AC) >= -10 ? (AC) : (u.sealsActive&SEAL_BALAM || activeFightingForm(FFORM_SORESU) || is_ancient_body_ent(youracedata, u.ent_species)) ? min_ints(ROLL_NEG10(AC),ROLL_NEG10(AC)) : ROLL_NEG10(AC))
 #define MONSTER_AC_VALUE(AC)	((AC) >= -10 ? (AC) : ROLL_NEG10(AC))
 
 #if defined(MICRO) && !defined(__DJGPP__)

@@ -893,6 +893,7 @@ boolean chatting;
 		mtmp->isshk ? MS_SELL : 
 		(mtmp->mtyp == PM_RHYMER && !mtmp->mspec_used) ? MS_SONG : 
 		mtmp->mfaction == QUEST_FACTION ? MS_GUARDIAN : 
+		(ptr->msound == MS_CUSS && mtmp->mpeaceful) ? MS_HUMANOID : 
 		ptr->msound
 	) {
 	case MS_TATTOO:{
@@ -1121,6 +1122,28 @@ boolean chatting;
 				if (smith_offer_price(charge, mtmp) == FALSE) break;
 				obj->bodytypeflag = bodytype;
 				verbalize("Reshaped!");
+				made_purchase = TRUE;
+				break;
+			case 5://scales to shield
+				if ( !(obj = getobj(armors, "have turned into a shield"))) break;
+				if(obj->owornmask){
+					verbalize("I can't work on armor you are wearing!");
+					break;
+				}
+				if (!(obj->otyp >= GRAY_DRAGON_SCALES &&
+				obj->otyp <= YELLOW_DRAGON_SCALES)) {
+					verbalize("Sorry, it needs to be dragon scales.");
+					break;
+				}
+				charge = 240 * (seenSeals + 1);
+				if (smith_offer_price(charge, mtmp) == FALSE) break;
+				if(!Blind) {
+					Your("%s merges and hardens!", xname(obj));
+				}
+				obj->otyp = GRAY_DRAGON_SCALE_SHIELD +
+					obj->otyp - GRAY_DRAGON_SCALES;
+				obj->objsize = MZ_HUMAN;
+				obj->known = 1;
 				made_purchase = TRUE;
 				break;
 			default:
@@ -1718,7 +1741,9 @@ asGuardian:
 								if((levl[ix][iy].typ <= SCORR || levl[ix][iy].typ == CORR || levl[ix][iy].typ == ROOM) && levl[ix][iy].typ != STONE){
 									levl[ix][iy].typ = CORR;
 									if(!does_block(ix,iy,&levl[ix][iy])) unblock_point(ix,iy);	/* vision:  can see through */
-									if(ttmp) delfloortrap(ttmp);
+									if(ttmp) {
+										if (delfloortrap(ttmp)) ttmp = (struct trap *)0;
+									}
 									levl[ix][iy].typ = CORR;
 									trycount = 0;
 								}
@@ -2460,6 +2485,18 @@ humanoid_sound:
 				case PM_FORMIAN_TASKMASTER:
 					pline_msg = "chitters.";
 				break;
+				case PM_MARILITH:
+					if(rn2(2)){
+						Sprintf(msgbuff, talkabt, !rn2(4) ? "swords" : !rn2(3) ? "spears" : rn2(2) ? "bludgeons" : "knives");
+						pline_msg = msgbuff;
+					}
+					else if(!rn2(3))
+						pline_msg = "discusses military tactics.";
+					else if(rn2(2))
+						pline_msg = "curses devils.";
+					else
+						pline_msg = "curses angels.";
+				break;
 				case PM_ARCHEOLOGIST:
 					pline_msg = "describes a recent article in \"Spelunker Today\" magazine.";
 				break;
@@ -2648,10 +2685,6 @@ humanoid_sound:
 			start_clockwinding(key, mtmp, turns);
 			break;
 		}
-		if(mtmp->mpeaceful && !nonliving(youracedata)){
-			if(nurse_services(mtmp))
-				break;
-		}
 	    if (uwep && (uwep->oclass == WEAPON_CLASS || is_weptool(uwep)))
 			verbl_msg = "Put that weapon away before you hurt someone!";
 	    else if (uarmc || uarm || uarmh || uarms || uarmg || uarmf)
@@ -2660,6 +2693,18 @@ humanoid_sound:
 			  "Please undress so I can examine you.";
 	    else if (uarmu)
 			verbl_msg = "Take off your shirt, please.";
+		else if(nonliving(youracedata)){
+			if(uandroid)
+				verbl_msg = "Wow, you're so lifelike! I think you want a mechanic, though.";
+			else if(uclockwork)
+				verbl_msg = "Oh, not my area of expertise! Try a mechanic!";
+			else
+				verbl_msg = "Oops, not my department!";
+		}
+		else if(mtmp->mpeaceful){
+			if(nurse_services(mtmp))
+				break;
+		}
 	    else verbl_msg = "Relax, this won't hurt a bit.";
 	    break;
 	case MS_GUARD:
@@ -2922,6 +2967,11 @@ const char *prompt;
 	add_menu(tmpwin, NO_GLYPH, &any,
 		'e', 0, ATR_NONE, buf,
 		MENU_UNSELECTED);
+	Sprintf(buf, "Scales to Shield");
+	any.a_int = 5;	/* must be non-zero */
+	add_menu(tmpwin, NO_GLYPH, &any,
+		'd', 0, ATR_NONE, buf,
+		MENU_UNSELECTED);
 	end_menu(tmpwin, prompt);
 	how = PICK_ONE;
 	n = select_menu(tmpwin, how, &selected);
@@ -3004,6 +3054,12 @@ mon_in_command_chain(follower, commander)
 struct monst * follower;
 struct monst * commander;
 {
+	if(has_template(commander, MOLY_TEMPLATE)){
+		if(is_cha_demon(follower->data))
+			return TRUE;
+		else return FALSE;
+	}
+	// else 
 	switch (monsndx(commander->data))	// for special cases
 	{
 	case PM_LEGION:
@@ -3081,7 +3137,7 @@ struct monst * commander;
 			continue;
 
 		tmp = d(nd, sd);
-		
+
 		inrange += 1;
 		if (tmp > mtmp->encouraged || mtmp->mflee){
 			mtmp->encouraged = max(tmp, mtmp->encouraged);
@@ -3206,29 +3262,29 @@ int dz;
 	
     if (is_silent(youracedata)) {
 		pline("As %s, you cannot speak.", an(youracedata->mname));
-		return(0);
+		return MOVE_CANCELLED;
     }
     if (Strangled) {
 		You_cant("speak.  You're choking!");
-		return(0);
+		return MOVE_CANCELLED;
     }
     else if (Babble) {
 		You_cant("communicate.  You're babbling unintelligibly!");
-		return(0);
+		return MOVE_CANCELLED;
     }
     else if (Screaming) {
 		You_cant("communicate.  You're too busy screaming!");
-		return(0);
+		return MOVE_CANCELLED;
     }
 	
 	if(mad_turn(MAD_TOO_BIG)){
 		pline("It's too big!");
-		return 0;
+		return MOVE_CANCELLED;
 	}
 	
     if (u.uswallow) {
 		pline("They won't hear you out there.");
-		return(0);
+		return MOVE_CANCELLED;
     }
 
     if (!Blind && (otmp = shop_object(u.ux, u.uy)) != (struct obj *)0) {
@@ -3249,12 +3305,12 @@ int dz;
 		u.dz = dz;
 	} else if (!getdir("Talk to whom? (in what direction)")) {
 		/* decided not to chat */
-		return(0);
+		return MOVE_CANCELLED;
 	}
 
 #ifdef STEED
     if (u.usteed && u.dz > 0)
-	return (domonnoise(u.usteed, TRUE));
+	return (domonnoise(u.usteed, TRUE)) ? MOVE_STANDARD : MOVE_INSTANT;
 #endif
 	if (u.dz) {
 		struct engr *ep = get_head_engr();
@@ -3263,7 +3319,7 @@ int dz;
 				break;//else continue
 		if(!ep || ep->halu_ward || ep->ward_id < FIRST_SEAL) pline("They won't hear you %s there.", u.dz < 0 ? "up" : "down");
 		else pline("The gate won't open with you standing on the seal!");
-		return(0);
+		return MOVE_CANCELLED;
 	}
 
 	if (u.dx == 0 && u.dy == 0) {
@@ -3273,15 +3329,15 @@ int dz;
  * etc...  --KAA
 	if (u.umonnum == PM_ETTIN) {
 	    You("discover that your other head makes boring conversation.");
-	    return(1);
+	    return MOVE_STANDARD;
 	}
 */
 		pline("Talking to yourself is a bad habit for a dungeoneer.");
-		return(0);
+		return MOVE_CANCELLED;
     }
 
     tx = u.ux+u.dx; ty = u.uy+u.dy;
-	if (!isok(tx, ty)) return 0;
+	if (!isok(tx, ty)) return MOVE_CANCELLED;
     mtmp = m_at(tx, ty);
 	
 	if(In_quest(&u.uz) && urole.neminum == PM_DURIN_S_BANE && artifact_door(tx, ty)){
@@ -3294,17 +3350,16 @@ int dz;
 			unblock_point(tx,ty);
 			newsym(tx,ty);
 		}
-		return 1;
+		return MOVE_STANDARD;
 	}
-	
+
 	bindresult = dobinding(tx,ty);
-	if(bindresult) return bindresult;
+	if(bindresult != MOVE_CANCELLED) return bindresult;
 	
 	if(!mtmp && (u.specialSealsActive&SEAL_ACERERAK) &&
 		(otmp = level.objects[tx][ty]) && 
 		 otmp->otyp == CORPSE && !mindless(&mons[otmp->corpsenm]) && 
-		 !nohands(&mons[otmp->corpsenm]
-		)
+		 !is_animal(&mons[otmp->corpsenm])
 	){
 		You("speak to the shadow that dwells within this corpse.");
 		if(otmp->ovar1 < moves){
@@ -3344,7 +3399,7 @@ int dz;
 						u.specialSealsKnown |= SEAL_UNKNOWN_GOD;
 					}
 				}
-				return 1;
+				return MOVE_STANDARD;
 			}
 	  }
 	}
@@ -3361,12 +3416,12 @@ int dz;
 			}
 			if(yn("Offer it?")=='n'){
 				You("refuse.");
-				return 1;
+				return MOVE_STANDARD;
 			}
 			else{
 				You("let %s take your %s.",mon_nam(mtmp), xname(uwep));
 				if (!mtyp_to_thought(mtmp->mtyp))
-					return 1;	/* error */
+					return MOVE_CANCELLED;	/* error */
 				else
 					give_thought(mtyp_to_thought(mtmp->mtyp));
 
@@ -3378,7 +3433,7 @@ int dz;
 				}
 				useup(optr);
 				mongone(mtmp);
-				return 1;
+				return MOVE_STANDARD;
 			}
 		}
 	}
@@ -3399,10 +3454,10 @@ int dz;
 					cost = 7;
 					if(gold < cost){
 						pline("Not enough gold!");
-						return 0;
+						return MOVE_STANDARD;
 					}
 					if(yn("That costs 7 gold.  Pay?") != 'y'){
-						return 0;
+						return MOVE_STANDARD;
 					}
 #ifndef GOLDOBJ
 					u.ugold -= cost;
@@ -3422,10 +3477,10 @@ int dz;
 					cost = 70;
 					if(gold < cost){
 						pline("Not enough gold!");
-						return 0;
+						return MOVE_STANDARD;
 					}
 					if(yn("That costs 70 gold.  Pay?") != 'y'){
-						return 0;
+						return MOVE_STANDARD;
 					}
 #ifndef GOLDOBJ
 					u.ugold -= cost;
@@ -3438,10 +3493,10 @@ int dz;
 					cost = 700;
 					if(gold < cost){
 						pline("Not enough gold!");
-						return 0;
+						return MOVE_STANDARD;
 					}
 					if(yn("That costs 700 gold.  Pay?") != 'y'){
-						return 0;
+						return MOVE_STANDARD;
 					}
 					if(!uwep){
 						impossible("Your weapon vanished between the menu and the blessing?");
@@ -3459,10 +3514,10 @@ int dz;
 					cost = 7000;
 					if(gold < cost){
 						pline("Not enough gold!");
-						return 0;
+						return MOVE_STANDARD;
 					}
 					if(yn("That costs 7,000 gold.  Pay?") != 'y'){
-						return 0;
+						return MOVE_STANDARD;
 					}
 #ifndef GOLDOBJ
 					u.ugold -= cost;
@@ -3475,10 +3530,10 @@ int dz;
 					cost = 70000;
 					if(gold < cost){
 						pline("Not enough gold!");
-						return 0;
+						return MOVE_STANDARD;
 					}
 					if(yn("That costs 70,000 gold.  Pay?") != 'y'){
-						return 0;
+						return MOVE_STANDARD;
 					}
 					if(!uwep){
 						impossible("Your weapon vanished between the menu and the blessing?");
@@ -3498,9 +3553,9 @@ int dz;
 				break;
 			}
 			update_inventory();
-			return 1;
+			return MOVE_STANDARD;
 		}
-		return 0;
+		return MOVE_STANDARD;
 	}
 	
     if ( (!mtmp || mtmp->mundetected ||
@@ -3528,16 +3583,20 @@ int dz;
 					Monnam(mtmp), (is_animal(mtmp->data) || mindless_mon(mtmp) ? "its" : hisherits(mtmp))
 				);
 		}
-		return 0;
+		return MOVE_INSTANT;
 	}
 	
     if (!mtmp || mtmp->mundetected ||
 		mtmp->m_ap_type == M_AP_FURNITURE ||
-		mtmp->m_ap_type == M_AP_OBJECT) return 0;
+		mtmp->m_ap_type == M_AP_OBJECT
+	){
+		You("don't see anyone to talk to there.");
+		return MOVE_CANCELLED;
+	}
 	
     if (Underwater) {
 	Your("speech is unintelligible underwater.");
-	return(0);
+	return MOVE_INSTANT;
     }
 
     /* paralized monsters won't talk, except priests (who wake up) */
@@ -3546,14 +3605,14 @@ int dz;
 		   not noticing him and just not existing, so skip the message. */
 		if (canspotmon(mtmp))
 			pline("%s seems not to notice you.", Monnam(mtmp));
-		return(0);
+		return MOVE_INSTANT;
     }
     if (is_deaf(mtmp) && !mtmp->mcansee) {
 		/* If it is unseen, the player can't tell the difference between
 		   not noticing him and just not existing, so skip the message. */
 		if (canspotmon(mtmp))
 			pline("%s seems not to notice you.", Monnam(mtmp));
-		return(0);
+		return MOVE_INSTANT;
     }
     /* sleeping monsters won't talk unless they wake up, except priests (who wake up) */
 	if (mtmp->msleeping){
@@ -3563,7 +3622,7 @@ int dz;
 		}
 		else {
 			pline("%s stirs in %s slumber, but doesn't wake up.", Monnam(mtmp), mhis(mtmp));
-			return 1;
+			return MOVE_STANDARD;
 		}
 	}
 
@@ -3574,35 +3633,38 @@ int dz;
     /* laughing monsters can't talk */
     if (!mtmp->mnotlaugh) {
 		if (!is_silent_mon(mtmp)) pline("%s laughs hysterically", Monnam(mtmp));
-		return(0);
+		return MOVE_INSTANT;
     }
 	
     if (mtmp->mtame && mtmp->mnotlaugh && mtmp->meating) {
 		if (!canspotmon(mtmp))
 			map_invisible(mtmp->mx, mtmp->my);
 		pline("%s is eating noisily. Looks like it will take %d turns to finish.", Monnam(mtmp), mtmp->meating);
-		return (0);
+		return MOVE_INSTANT;
     }
 	
 	if(mtmp->mtyp == PM_NIGHTGAUNT && u.umonnum == PM_GHOUL){
 		You("bark the secret passwords known to ghouls.");
 		mtmp->mpeaceful = 1;
 		mtmp = tamedog(mtmp, (struct obj *)0);
-		return 1;
+		return MOVE_STANDARD;
 	}
 	if(is_undead(mtmp->data) && u.specialSealsActive&SEAL_ACERERAK && u.ulevel > mtmp->m_lev){
 		You("order the lesser dead to stand at ease.");
 		mtmp->mpeaceful = 1;
 		mtmp->mhp = mtmp->mhpmax;
-		return 1;
+		return MOVE_STANDARD;
 	}
 	if(mtmp->mtyp == PM_LADY_CONSTANCE && !mtmp->mtame && mtmp->mpeaceful && Role_if(PM_MADMAN) && u.uevent.qcompleted){
 		verbalize("Let's get out of here!");
 		mtmp->mpeaceful = 1;
 		mtmp = tamedog(mtmp, (struct obj *)0);
-		if(mtmp && mtmp->mtame)
+		if(mtmp && mtmp->mtame && get_mx(mtmp, MX_EDOG)){
 			EDOG(mtmp)->loyal = TRUE;
-		return 1;
+			EDOG(mtmp)->waspeaceful = TRUE;
+			mtmp->mpeacetime = 0;
+		}
+		return MOVE_STANDARD;
 	}
     /* That is IT. EVERYBODY OUT. You are DEAD SERIOUS. */
     if (mtmp->mtyp == PM_URANIUM_IMP) {
@@ -3619,15 +3681,15 @@ int dz;
             if (rnl(100) >= 90) {
                 pline("%s unfortunately ignores your overtures.",
                  Monnam(mtmp));
-                return 0;
+                return MOVE_STANDARD;
             }
             mtmp->mpeaceful = 1;
             set_malign(mtmp);
         }
-        return 0;
+        return MOVE_STANDARD;
     }
 
-    return domonnoise(mtmp, TRUE);
+    return domonnoise(mtmp, TRUE) ? MOVE_STANDARD : MOVE_INSTANT;
 }
 
 //definition of externs in you.h
@@ -3714,11 +3776,11 @@ int tx,ty;
 	for(;ep;ep=ep->nxt_engr)
 		if(ep->engr_x==tx && ep->engr_y==ty)
 			break;//else continue
-	if(!(ep)) return 0; //no engraving found
-	if(ep->halu_ward || ep->ward_id < FIRST_SEAL) return 0;
+	if(!(ep)) return MOVE_CANCELLED; //no engraving found
+	if(ep->halu_ward || ep->ward_id < FIRST_SEAL) return MOVE_CANCELLED;
 	else if(ep->complete_wards < 1){
 		pline("The seal has been damaged.");
-		return 0;
+		return MOVE_INSTANT;
 	// } else if(ep->engr_time+5 < moves){
 		// pline("The seal is too old.");
 		// return 0;
@@ -3733,16 +3795,16 @@ int tx,ty;
       }
     }
 	
-	if(m_at(tx,ty) && (ep->ward_id != ANDROMALIUS || m_at(tx,ty)->mtyp != PM_SEWER_RAT)) return 0;
+	if(m_at(tx,ty) && (ep->ward_id != ANDROMALIUS || m_at(tx,ty)->mtyp != PM_SEWER_RAT)) return MOVE_CANCELLED;
 	if(Role_if(PM_ANACHRONOUNBINDER) && ep->ward_id >= FIRST_SEAL && ep->ward_id <= SEAL_YMIR && (u.spiritSummons & (1 << (ep->ward_id - FIRST_SEAL)))){
 		You("have already released that spirit from the void.");
-		return 0;
+		return MOVE_CANCELLED;
 	}	
 	
 	if(u.veil){
 		You("feel reality threatening to slip away!");
 		if (yn("Are you sure you want proceed with the ritual?") != 'y'){
-			return 0;
+			return MOVE_CANCELLED;
 		}
 		else pline("So be it.");
 		u.veil = FALSE;
@@ -3758,7 +3820,7 @@ int tx,ty;
 				if(Role_if(PM_ANACHRONOUNBINDER)){
 					pline("Ahazu, the seizer, greets you with open mouth.");			
 					summon_spirit(SEAL_AHAZU,AHAZU,PM_AHAZU,tx,ty);
-					return 0;
+					return MOVE_INSTANT;
 				}
 				if(u.sealCounts < numSlots){
 					pline("A voice whispers from below:");
@@ -3805,7 +3867,7 @@ int tx,ty;
 					if(Role_if(PM_ANACHRONOUNBINDER)){
 						pline("Amon, the shadow before the altar, stands before you.");
 						summon_spirit(SEAL_AMON,AMON,PM_AMON,tx,ty);
-						return 0;
+						return MOVE_INSTANT;
 					}
 					pline("No sooner are the shadows born than they rise up against their creator, smothering the flame under a tide of darkness.");
 					pline("Even as it dies, a voice speaks from the blood-red flame:");
@@ -3858,7 +3920,7 @@ int tx,ty;
 					if(Role_if(PM_ANACHRONOUNBINDER)){
 						pline("Andrealphus, marquis of angles, steps out of the corner.");
 						summon_spirit(SEAL_ANDREALPHUS,ANDREALPHUS,PM_ANDREALPHUS,tx,ty);
-						return 0;
+						return MOVE_INSTANT;
 					}
 					pline("\"I am Andrealphus, born of angles. In this soft world of curves, I alone am straight and true.\"");
 					pline("\"Though born of curves, by my square you shall rectify the world.\"");
@@ -3958,7 +4020,7 @@ int tx,ty;
 					if(Role_if(PM_ANACHRONOUNBINDER)){
 						pline("Andromalius, the repetant rogue, comes forth.");
 						summon_spirit(SEAL_ANDROMALIUS,ANDROMALIUS,PM_ANDROMALIUS,tx,ty);
-						return 0;
+						return MOVE_INSTANT;
 					}
 					pline("Suddenly, the hands toss one of the whirling objects to you.");
 					/*make object here*/
@@ -4170,7 +4232,7 @@ int tx,ty;
 				if(Role_if(PM_ANACHRONOUNBINDER)){
 					pline("Astaroth, the broken clock maker, springs forth.");
 					summon_spirit(SEAL_ASTAROTH,ASTAROTH,PM_ASTAROTH,tx,ty);
-					return 0;
+					return MOVE_INSTANT;
 				}
 				iscrys = (o->otyp == CRYSKNIFE);
 				if (o->oeroded && !iscrys) {
@@ -4264,7 +4326,7 @@ int tx,ty;
 					if(Role_if(PM_ANACHRONOUNBINDER)){
 						pline("Balam, the last sacrifice, bursts through the ice.");
 						summon_spirit(SEAL_BALAM,BALAM,PM_BALAM,tx,ty);
-						return 0;
+						return MOVE_INSTANT;
 					}
 					if(!Blind){
 						pline("A woman's scream echos through your mind as the cracks form a vaguely humanoid outline on the ice.");
@@ -4329,7 +4391,7 @@ int tx,ty;
 					if(Role_if(PM_ANACHRONOUNBINDER)){
 						pline("Berith, the red horseman, canters out.");
 						summon_spirit(SEAL_BERITH,BERITH,PM_BERITH,tx,ty);
-						return 0;
+						return MOVE_INSTANT;
 					}
 					if(!Blind){
 						pline("Gold rains down within the circumference of the seal, melting slowly to blood where it lands.");
@@ -4388,7 +4450,7 @@ int tx,ty;
 			if(u.sealCounts < numSlots){
 				if(Role_if(PM_ANACHRONOUNBINDER)){
 					summon_spirit(SEAL_BUER,BUER,PM_BUER,tx,ty);
-					return 0;
+					return MOVE_INSTANT;
 				}
 				pline("Will you walk with me?\"");
 				bindspirit(ep->ward_id);
@@ -4436,7 +4498,7 @@ int tx,ty;
 					if(Role_if(PM_ANACHRONOUNBINDER)){
 						pline("She approaches.");
 						summon_spirit(SEAL_CHUPOCLOPS,CHUPOCLOPS,PM_CHUPOCLOPS,tx,ty);
-						return 0;
+						return MOVE_INSTANT;
 					}
 					pline("She wraps you tight in her bitter cords and sends you forth, bait within her web.");
 					bindspirit(ep->ward_id);
@@ -4486,7 +4548,7 @@ int tx,ty;
 				if(u.sealCounts < numSlots){
 					if(Role_if(PM_ANACHRONOUNBINDER)){
 						summon_spirit(SEAL_DANTALION,DANTALION,PM_DANTALION,tx,ty);
-						return 0;
+						return MOVE_INSTANT;
 					}
 					if(!Blind) {
 						pline("The staring faces seem vaguely familiar...");
@@ -4546,7 +4608,7 @@ int tx,ty;
 					if(Role_if(PM_ANACHRONOUNBINDER)){
 						verbalize("Oh... You want to fight.");
 						summon_spirit(SEAL_SHIRO,SHIRO,PM_SHIRO,tx,ty);
-						return 0;
+						return MOVE_INSTANT;
 					}
 					pline("\"You look like a pretty distinctive person.\"");
 					pline("\"Let me follow you and practice standing out.\"");
@@ -4592,7 +4654,7 @@ int tx,ty;
 					if(Role_if(PM_ANACHRONOUNBINDER)){
 						verbalize("You killed my brood. Prepare to die.");
 						summon_spirit(SEAL_ECHIDNA,ECHIDNA,PM_ECHIDNA,tx,ty);
-						return 0;
+						return MOVE_INSTANT;
 					}
 					pline("\"Free me from this place, and I and my brood shall fight for your cause.\"");
 					bindspirit(ep->ward_id);
@@ -4644,7 +4706,7 @@ int tx,ty;
 					if(Role_if(PM_ANACHRONOUNBINDER)){
 						pline("Eden looks unhappy.");
 						summon_spirit(SEAL_EDEN,EDEN,PM_EDEN,tx,ty);
-						return 0;
+						return MOVE_INSTANT;
 					}
 					pline("Radiant light falls upon you,");
 					pline("blinding you to what lies beyond.");
@@ -4698,7 +4760,7 @@ int tx,ty;
 					if(Role_if(PM_ANACHRONOUNBINDER)){
 						verbalize("You displease me.");
 						summon_spirit(SEAL_ENKI,ENKI,PM_ENKI,tx,ty);
-						return 0;
+						return MOVE_INSTANT;
 					}
 					pline("Bow to me, and I shall teach the arts of civilization.");
 					bindspirit(ep->ward_id);
@@ -4741,7 +4803,7 @@ int tx,ty;
 					if(Role_if(PM_ANACHRONOUNBINDER)){
 						pline("She dances up to you and sweeps you up into her dance.");
 						summon_spirit(SEAL_EURYNOME,EURYNOME,PM_EURYNOME,tx,ty);
-						return 0;
+						return MOVE_INSTANT;
 					}
 					if(!Blind){
 						pline("She dances up to you and sweeps you up into her dance.");
@@ -4794,7 +4856,7 @@ int tx,ty;
 					if(Role_if(PM_ANACHRONOUNBINDER)){
 						pline("But ready to hurt you more.");
 						summon_spirit(SEAL_EVE,EVE,PM_EVE,tx,ty);
-						return 0;
+						return MOVE_INSTANT;
 					}
 					You("help her to her feet.");
 					pline("\"Shall we hunt together?\"");
@@ -4843,7 +4905,7 @@ int tx,ty;
 					else pline("something bites you!");
 					if(Role_if(PM_ANACHRONOUNBINDER)){
 						summon_spirit(SEAL_FAFNIR,FAFNIR,PM_FAFNIR,tx,ty);
-						return 0;
+						return MOVE_INSTANT;
 					}
 					Your("left finger stings!");
 					bindspirit(ep->ward_id);
@@ -4883,7 +4945,7 @@ int tx,ty;
 				if(Role_if(PM_ANACHRONOUNBINDER)){
 					summon_spirit(SEAL_HUGINN_MUNINN,HUGINN_MUNINN,PM_HUGINN,tx,ty);
 					makemon(&mons[PM_MUNINN], tx, ty, MM_ADJACENTOK);
-					return 0;
+					return MOVE_INSTANT;
 				}
 				if(!Blind) pline("They hop up to your shoulders and begin to croak raucously in your ears.");
 				else pline("A pair of large birds land on you and begin to croak raucously in your ears.");
@@ -4943,7 +5005,7 @@ int tx,ty;
 					pline("Something jumps on you from behind!");
 					if(Role_if(PM_ANACHRONOUNBINDER)){
 						summon_spirit(SEAL_IRIS,IRIS,PM_IRIS,tx,ty);
-						return 0;
+						return MOVE_INSTANT;
 					}
 					pline("\"YAY! Lets play together!!\"");
 					bindspirit(ep->ward_id);
@@ -4981,7 +5043,7 @@ int tx,ty;
 					if(Role_if(PM_ANACHRONOUNBINDER)){
 						pline("Jack, bearer of the devil's lantern, shambles over.");
 						summon_spirit(SEAL_JACK,JACK,PM_JACK,tx,ty);
-						return 0;
+						return MOVE_INSTANT;
 					}
 					You("feel something climb onto your back!");
 					pline("\"Will you let me stay with you?\"");
@@ -5096,7 +5158,7 @@ int tx,ty;
 					if(Role_if(PM_ANACHRONOUNBINDER)){
 						summon_spirit(SEAL_MALPHAS,MALPHAS,PM_MALPHAS,tx,ty);
 						for(i = 0; i<12; i++) makemon(&mons[PM_CROW], tx, ty, MM_ADJACENTOK);
-						return 0;
+						return MOVE_INSTANT;
 					}
 					bindspirit(ep->ward_id);
 					u.sealTimeout[MALPHAS-FIRST_SEAL] = moves + bindingPeriod;
@@ -5139,7 +5201,7 @@ int tx,ty;
 					else You_hear("screaming!");
 					if(Role_if(PM_ANACHRONOUNBINDER)){
 						summon_spirit(SEAL_MARIONETTE,MARIONETTE,PM_MARIONETTE,tx,ty);
-						return 0;
+						return MOVE_INSTANT;
 					}
 					pline("You feel sharp pains in your elbows and knees!");
 					if(!Blind) pline("It seems that you, are but a puppet.");
@@ -5179,7 +5241,7 @@ int tx,ty;
 					if(Role_if(PM_ANACHRONOUNBINDER)){
 						You_feel("eyes watching you.");
 						summon_spirit(SEAL_MOTHER,MOTHER,PM_GREAT_MOTHER,tx,ty);
-						return 0;
+						return MOVE_INSTANT;
 					}
 					You("feel eyes open in your hands!");
 					pline("But you still can't see...");
@@ -5226,7 +5288,7 @@ int tx,ty;
 					}
 					if(Role_if(PM_ANACHRONOUNBINDER)){
 						summon_spirit(SEAL_NABERIUS, NABERIUS,PM_NABERIUS,tx,ty);
-						return 0;
+						return MOVE_INSTANT;
 					}
 					pline("\"Hello, I am Naberius, the councilor.\"");
 					pline("\"I can smell the weaknesses others try to hide.\"");
@@ -5276,7 +5338,7 @@ int tx,ty;
 					if(Role_if(PM_ANACHRONOUNBINDER)){
 						pline("Before you stands an ancient darkness.");
 						summon_spirit(SEAL_ORTHOS,ORTHOS,PM_ORTHOS,tx,ty);
-						return 0;
+						return MOVE_INSTANT;
 					}
 					pline("You feel that it will stay with you for a while.");
 					bindspirit(ep->ward_id);
@@ -5314,7 +5376,7 @@ int tx,ty;
 					else pline("You know that this is Ose, despite never having met.");
 					if(Role_if(PM_ANACHRONOUNBINDER)){
 						summon_spirit(SEAL_OSE,OSE,PM_OSE,tx,ty);
-						return 0;
+						return MOVE_INSTANT;
 					}
 					pline("The seabed rises.");
 					bindspirit(ep->ward_id);
@@ -5353,7 +5415,7 @@ int tx,ty;
 					else pline("You know that this is Ose, despite never having met.");
 					if(Role_if(PM_ANACHRONOUNBINDER)){
 						summon_spirit(SEAL_OSE,OSE,PM_OSE,tx,ty);
-						return 0;
+						return MOVE_INSTANT;
 					}
 					bindspirit(ep->ward_id);
 					u.sealTimeout[OSE-FIRST_SEAL] = moves + bindingPeriod;
@@ -5394,7 +5456,7 @@ int tx,ty;
 					newsym(tx,ty);
 					if(Role_if(PM_ANACHRONOUNBINDER)){
 						summon_spirit(SEAL_OTIAX,OTIAX,PM_OTIAX,tx,ty);
-						return 0;
+						return MOVE_INSTANT;
 					}
 					bindspirit(ep->ward_id);
 					u.sealTimeout[OTIAX-FIRST_SEAL] = moves + bindingPeriod;
@@ -5445,7 +5507,7 @@ int tx,ty;
 					if(Role_if(PM_ANACHRONOUNBINDER)){
 						pline("Paimon, the fell archivist, appears in the seal.");
 						summon_spirit(SEAL_PAIMON,PAIMON,PM_PAIMON,tx,ty);
-						return 0;
+						return MOVE_INSTANT;
 					}
 					if(!Blind){
 						pline("A beautiful woman rides into the seal on a camel.");
@@ -5498,7 +5560,7 @@ int tx,ty;
 					if(Role_if(PM_ANACHRONOUNBINDER)){
 						pline("It lands before you.");
 						summon_spirit(SEAL_SIMURGH,SIMURGH,PM_SIMURGH,tx,ty);
-						return 0;
+						return MOVE_INSTANT;
 					}
 					pline("It swoops down and lands on your shoulder.");
 					pline("Its radiant rainbow feathers reflect in its eyes,");
@@ -5550,7 +5612,7 @@ int tx,ty;
 					pline("of the realm now known only for dust.\"");
 					if(Role_if(PM_ANACHRONOUNBINDER)){
 						summon_spirit(SEAL_TENEBROUS,TENEBROUS,PM_TENEBROUS,tx,ty);
-						return 0;
+						return MOVE_INSTANT;
 					}
 					bindspirit(ep->ward_id);
 					u.sealTimeout[TENEBROUS-FIRST_SEAL] = moves + bindingPeriod;
@@ -5614,7 +5676,7 @@ int tx,ty;
 					pline("and you are the maggots in my corpse.");
 					if(Role_if(PM_ANACHRONOUNBINDER)){
 						summon_spirit(SEAL_YMIR,YMIR,PM_YMIR,tx,ty);
-						return 0;
+						return MOVE_INSTANT;
 					}
 					pline("But I will make a pact with you,");
 					pline("to throw down the false gods,");
@@ -5901,7 +5963,7 @@ int tx,ty;
 		} else pline("You hear whispering all around you.");
 	}break;
 	}
-	return 1;
+	return MOVE_STANDARD;
 }
 
 int *
@@ -6250,6 +6312,9 @@ int floorID;
 	}
 	else
 	{
+		if (u.sealCounts == GATE_SPIRITS) {
+			unbind(u.spirit[0], FALSE);
+		}
 		spirit_type = u.sealCounts;
 	}
 
@@ -6315,6 +6380,9 @@ int floorID;
 		break;
 	case ENKI:
 		HSwimming |= INTRINSIC;
+		break;
+	case ORTHOS:
+		make_singing_sword_nameable();
 		break;
 	case TENEBROUS:
 		if (Role_if(PM_EXILE) && u.ufirst_life && u.ufirst_sky && u.ufirst_light && !(u.specialSealsKnown&SEAL_LIVING_CRYSTAL)){
@@ -6480,6 +6548,50 @@ boolean inc_penalties;
 		else maxskill = P_UNSKILLED;
 	}
 	
+	if(Air_crystal){
+		if(p_skill == P_AXE
+		 || p_skill == P_HEALING_SPELL
+		 || p_skill == P_ATTACK_SPELL
+		 || p_skill == P_DAGGER
+		)
+			maxskill = min(maxskill + 1, P_EXPERT);
+		if(p_skill == P_BARE_HANDED_COMBAT)
+			maxskill = min(maxskill + 1, P_GRAND_MASTER);
+	}
+	if(Fire_crystal){
+		if(p_skill == P_LONG_SWORD
+		 || p_skill == P_BOW
+		 || p_skill == P_WAND_POWER
+		 || p_skill == P_MATTER_SPELL
+		)
+			maxskill = min(maxskill + 1, P_EXPERT);
+	}
+	if(Water_crystal){
+		if(p_skill == P_HAMMER
+		 || p_skill == P_SPEAR
+		 || p_skill == P_BROAD_SWORD
+		 || p_skill == P_CLERIC_SPELL
+		 || p_skill == P_MUSICALIZE
+		)
+			maxskill = min(maxskill + 1, P_EXPERT);
+	}
+	if(Earth_crystal){
+		if(p_skill == P_ATTACK_SPELL
+		 || p_skill == P_HEALING_SPELL
+		 || p_skill == P_CLERIC_SPELL
+		 || p_skill == P_DAGGER
+		)
+			maxskill = min(maxskill + 1, P_EXPERT);
+		if(p_skill == P_BARE_HANDED_COMBAT)
+			maxskill = min(maxskill + 1, P_GRAND_MASTER);
+	}
+	if(Black_crystal){
+		if(p_skill == P_TWO_HANDED_SWORD)
+			maxskill = min(maxskill + 1, P_EXPERT);
+		if(p_skill == P_ESCAPE_SPELL)
+			maxskill = min(maxskill + 1, P_EXPERT);
+	}
+
 	if(p_skill == P_NIMAN){
 		if(uwep && uwep->oartifact == ART_INFINITY_S_MIRRORED_ARC)
 			maxskill = min(P_EXPERT, P_SKILL(weapon_type(uwep)));
@@ -6487,8 +6599,10 @@ boolean inc_penalties;
 			maxskill = min(P_EXPERT, P_SKILL(weapon_type(uswapwep)));
 	}
 	
-	if(inc_penalties && u.umadness&MAD_FORMICATION && !ClearThoughts && maxskill > P_UNSKILLED){
+	if(inc_penalties && u.umadness&MAD_FORMICATION && !BlockableClearThoughts && maxskill > P_UNSKILLED){
 		int delta = (Insanity)/20;
+		if(Nightmare && ClearThoughts && delta)
+			delta = 1; /* Want Should have SOME effect */
 		maxskill = max(maxskill - delta, P_UNSKILLED);
 	}
 	
@@ -6539,6 +6653,40 @@ boolean inc_penalties;
 		if(OLD_P_SKILL(P_SHIEN) >= P_EXPERT) curskill++;
 	}
 	
+	if(Air_crystal){
+		if(p_skill == P_BARE_HANDED_COMBAT
+		 || p_skill == P_AXE
+		 || p_skill == P_HEALING_SPELL
+		 || p_skill == P_ATTACK_SPELL
+		 || p_skill == P_DAGGER
+		)
+		curskill += 1;
+	}
+	if(Fire_crystal){
+		if(p_skill == P_LONG_SWORD
+		 || p_skill == P_BOW
+		 || p_skill == P_WAND_POWER
+		 || p_skill == P_MATTER_SPELL
+		)
+		curskill += 1;
+	}
+	if(Water_crystal){
+		if(p_skill == P_HAMMER
+		 || p_skill == P_SPEAR
+		 || p_skill == P_CLERIC_SPELL
+		 || p_skill == P_MUSICALIZE
+		)
+		curskill += 1;
+	}
+	if(Earth_crystal){
+		if(p_skill == P_BARE_HANDED_COMBAT
+		 || p_skill == P_ATTACK_SPELL
+		 || p_skill == P_HEALING_SPELL
+		 || p_skill == P_CLERIC_SPELL
+		 || p_skill == P_DAGGER
+		)
+		curskill += 1;
+	}
 	if(p_skill == P_NIMAN && curskill < P_BASIC){
 		if(uwep && uwep->oartifact == ART_INFINITY_S_MIRRORED_ARC){
 			curskill = P_BASIC;
@@ -6553,8 +6701,10 @@ boolean inc_penalties;
 		curskill = P_BASIC;
 	}
 	
-	if(inc_penalties && u.umadness&MAD_FORMICATION && !ClearThoughts && curskill > P_UNSKILLED){
+	if(inc_penalties && u.umadness&MAD_FORMICATION && !BlockableClearThoughts && curskill > P_UNSKILLED){
 		int delta = (Insanity)/20;
+		if(Nightmare && ClearThoughts && delta)
+			delta = 1; /* Want Should have SOME effect */
 		curskill = max(curskill - delta, P_UNSKILLED);
 	}
 	
@@ -6785,7 +6935,12 @@ doblessmenu()
 	how = PICK_ONE;
 	n = select_menu(tmpwin, how, &selected);
 	destroy_nhwindow(tmpwin);
-	return (n > 0) ? (int)selected[0].item.a_int : 0;
+	if(n > 0){
+		int picked = selected[0].item.a_int;
+		free(selected);
+		return picked;
+	}
+	return 0;
 }
 
 int
@@ -6882,7 +7037,12 @@ donursemenu()
 	how = PICK_ONE;
 	n = select_menu(tmpwin, how, &selected);
 	destroy_nhwindow(tmpwin);
-	return (n > 0) ? (int)selected[0].item.a_int : 0;
+	if(n > 0){
+		int picked = selected[0].item.a_int;
+		free(selected);
+		return picked;
+	}
+	return 0;
 }
 
 boolean
@@ -7106,7 +7266,12 @@ dorendermenu()
 	how = PICK_ONE;
 	n = select_menu(tmpwin, how, &selected);
 	destroy_nhwindow(tmpwin);
-	return (n > 0) ? (int)selected[0].item.a_int : 0;
+	if(n > 0){
+		int picked = selected[0].item.a_int;
+		free(selected);
+		return picked;
+	}
+	return 0;
 }
 
 boolean
@@ -7245,7 +7410,12 @@ struct monst *dollmaker;
 	how = PICK_ONE;
 	n = select_menu(tmpwin, how, &selected);
 	destroy_nhwindow(tmpwin);
-	return (n > 0) ? (int)selected[0].item.a_int : 0;
+	if(n > 0){
+		int picked = selected[0].item.a_int;
+		free(selected);
+		return picked;
+	}
+	return 0;
 }
 
 boolean
