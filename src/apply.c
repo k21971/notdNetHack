@@ -4326,7 +4326,7 @@ struct obj *obj;
 
     /* proficiency check */
     proficient = 0;
-	if(u.umartial){
+	if(martial_bonus()){
 		proficient = min(P_SKILL(P_FLAIL)-P_UNSKILLED, P_SKILL(P_MARTIAL_ARTS)-P_BASIC);
 	}
     if (Role_if(PM_MONK)) ++proficient;
@@ -7737,10 +7737,10 @@ doapply()
 	case CREDIT_CARD:
 #endif
 	case SKELETON_KEY:
-		res = pick_lock(obj);
+		res = pick_lock(&obj);
 		break;
 	case UNIVERSAL_KEY:
-		res =  pick_lock(obj);
+		res =  pick_lock(&obj);
 		break;
 	case PICK_AXE:
 	case DWARVISH_MATTOCK:
@@ -8347,7 +8347,7 @@ doapply()
 		nomul(0, NULL);
 		return MOVE_CANCELLED;
 	}
-	if(res && !waslabile && obj && obj->oartifact) arti_speak(obj);
+	if(!(res == MOVE_CANCELLED) && !waslabile && obj && obj->oartifact) arti_speak(obj);
 xit2:
 	nomul(0, NULL);
 	return res;
