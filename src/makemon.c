@@ -11314,7 +11314,6 @@ boolean goodequip;
 			otmp->blessed = FALSE;
 			otmp->cursed = FALSE;
 			(void) mpickobj(mtmp,otmp);
-			(void)mongets(mtmp, AMULET_OF_LIFE_SAVING, mkobjflags);
 			break;
 		}
 		case PM_CHUPOCLOPS:{
@@ -14934,8 +14933,10 @@ struct monst *mtmp, *victim;
 		return (struct permonst *)0;
 	    }
 		set_mon_data(mtmp, newtype);	/* preserve intrinsics */
-		if(oldtype == PM_STRANGE_LARVA)
+		if(oldtype == PM_STRANGE_LARVA){
 			give_grown_equipment(mtmp);
+			give_mintrinsic(mtmp, ACID_RES);
+		}
 	    newsym(mtmp->mx, mtmp->my);		/* color may change */
 	    lev_limit = (int)mtmp->m_lev;	/* never undo increment */
 		if(newtype == PM_METROID_QUEEN && mtmp->mtame){
