@@ -391,12 +391,12 @@ dodrink()
 		return MOVE_INSTANT;
 	}
 	
-	if (uarmh && FacelessHelm(uarmh)){
+	if (uarmh && FacelessHelm(uarmh) && ((uarmh->cursed && !Weldproof) || !freehand())){
 		pline("The %s covers your whole face.", xname(uarmh));
 		display_nhwindow(WIN_MESSAGE, TRUE);    /* --More-- */
 		return MOVE_INSTANT;
 	}
-	if (uarmc && FacelessCloak(uarmc)){
+	if (uarmc && FacelessCloak(uarmc) && ((uarmc->cursed && !Weldproof) || !freehand())){
 		pline("The %s covers your whole face.", xname(uarmc));
 		display_nhwindow(WIN_MESSAGE, TRUE);    /* --More-- */
 		return MOVE_INSTANT;
@@ -620,8 +620,13 @@ boolean force;
 			if(u.uhunger > get_uhungermax()) u.uhunger = get_uhungermax();
 		    
 		    newuhs(FALSE);
-		} else
+		} else {
+			if(Role_if(PM_MADMAN)){
+				You_feel("ashamed of wiping your own memory.");
+				u.hod += otmp->cursed ? 5 : 2;
+			}
 		    exercise(A_WIS, FALSE);
+		}
 		
 		//All amnesia causes you to forget your crisis of faith
 		if(Doubt)
@@ -1079,7 +1084,7 @@ boolean force;
         enhanced = uarmg && uarmg->oartifact == ART_GAUNTLETS_OF_THE_HEALING_H;
 		healup(d((enhanced ? 2 : 1) * (6 + 2 * bcsign(otmp)), 4),
 		       !(get_ox(otmp, OX_ESUM)) * ((enhanced ? 2 : 1) * (!otmp->cursed ? 1 : 0)),
-			   !!otmp->blessed, !otmp->cursed);
+			   otmp->blessed, !otmp->cursed);
 		exercise(A_CON, TRUE);
 		break;
 	case POT_EXTRA_HEALING:
@@ -1637,7 +1642,7 @@ boolean your_fault;
 		break;
 	case POT_SPEED:
 		angermon = FALSE;
-		mon_adjust_speed(mon, 1, obj);
+		mon_adjust_speed(mon, 1, obj, TRUE);
 		break;
 	case POT_BLINDNESS:
 		if(haseyes(mon->data)) {
@@ -1780,14 +1785,16 @@ boolean your_fault;
 		    break;
 		default:
 		    if (mon->data->msound == MS_NEMESIS && canseemon(mon)
-				    && your_fault)
-			pline("%s curses your ancestors!", Monnam(mon));
+				    && your_fault
+			){
+				pline("%s curses your ancestors!", Monnam(mon));
+			}
 		    else if (mon->isshk) {
-			angermon = FALSE;
-			if (canseemon(mon))
-			    pline("%s looks at you curiously!", 
-					    Monnam(mon));
-			make_happy_shk(mon, FALSE);
+				angermon = FALSE;
+				if (canseemon(mon))
+					pline("%s looks at you curiously!", 
+							Monnam(mon));
+				mon->mamnesia = TRUE;
 		    } else if (!is_covetous(mon->data) &&
 				    !resist(mon, POTION_CLASS, 0, 0)) {
 				angermon = FALSE;
@@ -1799,8 +1806,7 @@ boolean your_fault;
 					} else
 						pline("%s looks bewildered!", Monnam(mon));
 				}
-				mon->mpeaceful = TRUE;
-				mon->mtame = FALSE;	
+				mon->mamnesia = TRUE;
 		    }
 		    break;
 		}
@@ -2500,6 +2506,7 @@ boolean amnesia;
 			    bill_dummy_object(obj);
 			}
 			obj->otyp = SCR_BLANK_PAPER;
+			remove_oprop(obj, OPROP_TACTB);
 			obj->spe = 0;
 			obj->oward = 0;
 			used = TRUE;
@@ -2523,6 +2530,7 @@ boolean amnesia;
 			    }
 			    obj->otyp = SPE_BLANK_PAPER;
 				obj->obj_color = objects[SPE_BLANK_PAPER].oc_color;
+				remove_oprop(obj, OPROP_TACTB);
 			}
 			used = TRUE;
 		}
