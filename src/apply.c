@@ -8375,7 +8375,7 @@ doapply()
 		add_class(class_list, FOOD_CLASS);
 	if (carrying(DWARVISH_HELM) || carrying(LANTERN_PLATE_MAIL) ||
 		carrying(GNOMISH_POINTY_HAT) || carrying(DROVEN_CLOAK) ||
-		carrying_art(ART_AEGIS) || carrying(EILISTRAN_ARMOR) || carrying(POWER_ARMOR))
+		carrying_art(ART_AEGIS) || carrying(EILISTRAN_ARMOR) || carrying_art(ART_RED_CORDS_OF_ILMATER) || carrying(POWER_ARMOR))
 		add_class(class_list, ARMOR_CLASS);
 	if(carrying_applyable_ring()){
 		add_class(class_list, RING_CLASS);
@@ -8579,7 +8579,7 @@ doapply()
 	else {
 		static const char all_count[] = { ALLOW_COUNT, WEAPON_CLASS, GEM_CLASS, 0 };
 		struct obj *otmp = getobj(all_count, "feed to the fabber");
-		if (!otmp) break;
+		if (!otmp || otmp->oartifact) break;
 		switch(otmp->otyp){
 			case ROCK:
 				obj_extract_self(otmp);

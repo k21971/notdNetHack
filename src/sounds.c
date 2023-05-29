@@ -1011,6 +1011,33 @@ boolean chatting;
 				pline("%s tattoos a %s onto you.",Monnam(mtmp),tat_to_name(selection));
 				You_feel("like breaking rocks.");
 				break;
+			case TAT_CRYSTAL_ORB:
+				charge = (int) 6000 * discount;
+				if (smith_offer_price(charge, mtmp) == FALSE) break;
+				u.utats |= selection;
+				pline("%s tattoos a %s onto you.",Monnam(mtmp),tat_to_name(selection));
+				You_feel("focused.");
+				break;
+			case TAT_HYPHEN:
+				charge = (int) 6000 * discount;
+				if (smith_offer_price(charge, mtmp) == FALSE) break;
+				u.utats |= selection;
+				u.uaesh++;
+				u.ukrau++;
+				u.uhoon++;	
+				u.uuur++;
+				u.unaen++;
+				u.uvaul++;
+				pline("%s tattoos a %s onto you.",Monnam(mtmp),tat_to_name(selection));
+				You("hear strange syllables.");
+				break;
+			case TAT_FLAMING_WHIP:
+				charge = (int) 6000 * discount;
+				if (smith_offer_price(charge, mtmp) == FALSE) break;
+				u.utats |= selection;
+				pline("%s tattoos a %s onto you.",Monnam(mtmp),tat_to_name(selection));
+				You_feel("fiery.");
+				break;
 		}
 		if(original_tats != u.utats) achieve.inked_up = 1;
 		break;
@@ -2504,13 +2531,18 @@ humanoid_sound:
 			if((ptr->mtyp == PM_PRIESTESS || ptr->mtyp == PM_DEMINYMPH)
 				&& has_template(mtmp, MISTWEAVER)
 			){
-				if(mtmp->mtame && has_object_type(invent, HOLY_SYMBOL_OF_THE_BLACK_MOTHE) && !u.shubbie_atten){
-					godlist[GOD_THE_BLACK_MOTHER].anger = 0;
-					u.shubbie_atten = 1;
+				if(mtmp->mtame && has_object_type(invent, HOLY_SYMBOL_OF_THE_BLACK_MOTHE)){
+					if(!u.shubbie_atten){
+						godlist[GOD_THE_BLACK_MOTHER].anger = 0;
+						u.shubbie_atten = 1;
+					}
+					if(godlist[GOD_THE_BLACK_MOTHER].anger == 0){
+						pacify_goat_faction();
+					}
 				}
-				switch(rn2(7)){
+				switch(rn2(10)){
 					case 0:
-						verbl_msg = "Ia! Shub-Niggurath! The Goat with a Thousand Young!";
+						verbl_msg = "Ia! Shub-Nugganoth! The Goat with a Thousand Young!";
 					break;
 					case 1:
 						verbl_msg = "Abundance to the Black Goat of the Woods!";
@@ -2522,11 +2554,20 @@ humanoid_sound:
 						verbl_msg = "May Her eyes guide you.";
 					break;
 					case 4:
-						verbl_msg = "Gof'nn hupadgh Shub-Niggurath!";
+						verbl_msg = "Gof'nn hupadgh Shub-Nugganoth!";
 					break;
 					case 5:
 					case 6:
 						verbl_msg = "Ia!";
+					break;
+					case 7:
+						verbl_msg = "Solve et coagula!";
+					break;
+					case 8:
+						verbl_msg = "We stand on the brink of a strange world.";
+					break;
+					case 9:
+						verbl_msg = "She shall spawn and spawn again!";
 					break;
 				}
 			}
@@ -3105,19 +3146,18 @@ const char *prompt;
 			'c', 0, ATR_NONE, tat_to_name(TAT_CROESUS),
 			MENU_UNSELECTED);
 	}
-	if(!(u.utats & TAT_UNKNOWN) && u.regifted == 5){
+	if(!(u.utats & TAT_UNKNOWN) && u.regifted >= 1){
 		any.a_int = TAT_UNKNOWN;	/* must be non-zero */
 		add_menu(tmpwin, NO_GLYPH, &any,
 			's', 0, ATR_NONE, tat_to_name(TAT_UNKNOWN),
 			MENU_UNSELECTED);
 	}
-	/*if(!(u.utats & TAT_WILLOW) && u.ubranch == BLACK_FOREST){
-		Sprintf(buf, tat_to_name(TAT_WILLOW));
+	if(!(u.utats & TAT_WILLOW) && u.ubranch == BLACK_FOREST){
 		any.a_int = TAT_WILLOW;	
 		add_menu(tmpwin, NO_GLYPH, &any,
-			'w', 0, ATR_NONE, buf,
+			'w', 0, ATR_NONE, tat_to_name(TAT_WILLOW),
 			MENU_UNSELECTED);
-	}*/
+	}
 	if(!(u.utats & TAT_HAMMER) && u.sealsActive & SEAL_ASTAROTH){
 		any.a_int = TAT_HAMMER;	/* must be non-zero */
 		add_menu(tmpwin, NO_GLYPH, &any,
@@ -3128,6 +3168,24 @@ const char *prompt;
 		any.a_int = TAT_SPEARHEAD;	/* must be non-zero */
 		add_menu(tmpwin, NO_GLYPH, &any,
 			'p', 0, ATR_NONE, tat_to_name(TAT_SPEARHEAD),
+			MENU_UNSELECTED);
+	}
+	if(!(u.utats & TAT_CRYSTAL_ORB) && mvitals[PM_CHAOS].died > 0){
+		any.a_int = TAT_CRYSTAL_ORB;	/* must be non-zero */
+		add_menu(tmpwin, NO_GLYPH, &any,
+			'C', 0, ATR_NONE, tat_to_name(TAT_CRYSTAL_ORB),
+			MENU_UNSELECTED);
+	}
+	if(!(u.utats & TAT_HYPHEN) && mvitals[PM_ASPECT_OF_THE_SILENCE].died > 0){
+		any.a_int = TAT_HYPHEN;	/* must be non-zero */
+		add_menu(tmpwin, NO_GLYPH, &any,
+			'h', 0, ATR_NONE, tat_to_name(TAT_HYPHEN),
+			MENU_UNSELECTED);
+	}
+	if(!(u.utats & TAT_FLAMING_WHIP) && mvitals[PM_LUNGORTHIN].died > 0){
+		any.a_int = TAT_FLAMING_WHIP;	/* must be non-zero */
+		add_menu(tmpwin, NO_GLYPH, &any,
+			'F', 0, ATR_NONE, tat_to_name(TAT_FLAMING_WHIP),
 			MENU_UNSELECTED);
 	}
 	end_menu(tmpwin, prompt);
@@ -3160,6 +3218,12 @@ tat_to_name(int tat){
 			return "Bronze Hammer";
 		case TAT_SPEARHEAD:
 			return "Spearhead";
+		case TAT_CRYSTAL_ORB:
+			return "Crystal Orb";
+		case TAT_HYPHEN:
+			return "Hyphen";
+		case TAT_FLAMING_WHIP:
+			return "Flaming Whip";
 		default:
 			impossible("tat_to_name: unknown tat?");
 			return "Unknown Tat?";

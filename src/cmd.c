@@ -868,6 +868,10 @@ boolean you_abilities;
 		return MOVE_INSTANT;
 	break;
 	case MATTK_YUKI:
+		if(Protection_from_shape_changers){
+			pline("Something is blocking you from changing shape.");
+			return MOVE_CANCELLED;
+		}
 		if(urace.malenum == PM_YUKI_ONNA){
 			You("disperse into a cloud of snow.");
 			urace.malenum = PM_SNOW_CLOUD;
@@ -3511,8 +3515,11 @@ const char *msg;
 void
 confdir()
 {
-	register int x;
-	if(u.udrunken >= 3 && rn2(u.udrunken/3 + 1))
+	int x;
+	int drunken_value = u.udrunken;
+	if(u.utats & TAT_CRYSTAL_ORB)
+		drunken_value += 30;	
+	if(drunken_value >= 3 && rn2(drunken_value/3 + 1))
 		return;
 	x = (u.umonnum == PM_GRID_BUG || u.umonnum == PM_BEBELITH) ? 2*rn2(4) : rn2(8);
 	u.dx = xdir[x];

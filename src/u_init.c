@@ -457,6 +457,10 @@ static struct trobj Ironmask[] = {
 	{ RIN_SLOW_DIGESTION, 0, RING_CLASS, 1, OBJ_CURSED },
 	{ 0, 0, 0, 0, 0 }
 };
+static struct trobj ProtShapeChangers[] = {
+	{ RIN_PROTECTION_FROM_SHAPE_CHAN, 0, RING_CLASS, 1, OBJ_CURSED },
+	{ 0, 0, 0, 0, 0 }
+};
 static struct trobj Noble[] = {
 	{ RAPIER, 2, WEAPON_CLASS, 1, UNDEF_BLESS },
 #define NOB_SHIRT	1
@@ -2166,6 +2170,14 @@ u_init()
 		knows_object(DOUBLE_LIGHTSABER);
 		knows_object(POWER_ARMOR);
 		knows_object(KNUCKLE_DUSTERS);
+		knows_object(ETHERBLADE);
+		knows_object(FLAMETHROWER);
+		//Anas are trained in this I guess. Damaged armor can be found in the quest and it's useless if the PC doesn't know how to fix it.
+		u.uiearepairs = TRUE;
+		knows_object(IMPERIAL_ELVEN_BOOTS);
+		knows_object(IMPERIAL_ELVEN_ARMOR);
+		knows_object(IMPERIAL_ELVEN_GAUNTLETS);
+		knows_object(IMPERIAL_ELVEN_HELM);
 		if(Race_if(PM_DWARF)){
 			u.ualign.type = A_CHAOTIC;
 			u.ualign.god = u.ugodbase[UGOD_CURRENT] = u.ugodbase[UGOD_ORIGINAL] = align_to_god(u.ualign.type);
@@ -2318,6 +2330,9 @@ u_init()
         ini_inv(Madman);
 		if(Race_if(PM_VAMPIRE)){
 			ini_inv(Ironmask);
+		}
+		if(Race_if(PM_YUKI_ONNA)){
+			ini_inv(ProtShapeChangers);
 		}
         knows_object(SKELETON_KEY);
         knows_object(POT_BOOZE);
