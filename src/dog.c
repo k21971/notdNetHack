@@ -111,6 +111,7 @@ boolean quietly;
 	struct permonst *pm;
 	struct monst *mtmp = 0;
 	int chance, trycnt = 100;
+	int mmflags = MM_EDOG|MM_IGNOREWATER;
 
 
 	do {
@@ -131,6 +132,12 @@ boolean quietly;
 					pline("... into a pile of dust.");
 				break;	/* mtmp is null */
 			}
+			if(otmp->spe&FIGURINE_MALE){
+				mmflags |= MM_MALE;
+			}
+			if(otmp->spe&FIGURINE_FEMALE){
+				mmflags |= MM_FEMALE;
+			}
 	    } else if (!rn2(3)) {
 			pm = &mons[pet_type()];
 	    } else {
@@ -144,7 +151,7 @@ boolean quietly;
 				continue;
 		}
 
-		mtmp = makemon(pm, x, y, MM_EDOG|MM_IGNOREWATER);
+		mtmp = makemon(pm, x, y, mmflags);
 		if (otmp && !mtmp) { /* monster was genocided or square occupied */
 			if (!quietly)
 			   pline_The("figurine writhes and then shatters into pieces!");
@@ -162,12 +169,6 @@ boolean quietly;
 	if (otmp) { /* figurine; resulting monster might not become a pet */
 		if(check_fig_template(otmp->spe, FIGURINE_PSEUDO)){
 			set_template(mtmp, PSEUDONATURAL);
-		}
-		if(otmp->spe&FIGURINE_MALE){
-			mtmp->female = FALSE;
-		}
-		if(otmp->spe&FIGURINE_FEMALE){
-			mtmp->female = TRUE;
 		}
 
 		if(otmp->spe&FIGURINE_LOYAL){
@@ -397,6 +398,9 @@ losedogs()
 		if (mtmp->mux == u.uz.dnum && mtmp->muy == u.uz.dlevel 
 			&& mtmp->m_insight_level <= u.uinsight
 		    && !(mtmp->mtyp == PM_WALKING_DELIRIUM && BlockableClearThoughts)
+		    && !(mtmp->mtyp == PM_STRANGER && !quest_status.touched_artifact)
+		    && !((mtmp->mtyp == PM_PUPPET_EMPEROR_XELETH || mtmp->mtyp == PM_PUPPET_EMPRESS_XEDALLI) && mtmp->mvar_yellow_lifesaved)
+		    && !(mtmp->mtyp == PM_TWIN_SIBLING && (mtmp->mvar_twin_lifesaved || !(u.specialSealsActive&SEAL_YOG_SOTHOTH)))
 		) {
 			mon_extract_from_list(mtmp, &migrating_mons);
 		    mon_arrive(mtmp, FALSE);
@@ -448,7 +452,10 @@ boolean with_you;
 	fmon = mtmp;
 	if (mtmp->isshk)
 	    set_residency(mtmp, FALSE);
-
+	if(mtmp->m_ap_type == M_AP_MONSTER && (BlockableClearThoughts || (!mtmp->iswiz && !(u.umadness&MAD_DELUSIONS)))){
+		mtmp->m_ap_type = M_AP_NOTHING;
+		mtmp->mappearance = 0;
+	}
 	num_segs = mtmp->wormno;
 	/* baby long worms have no tail so don't use is_longworm() */
 	if ((mtmp->mtyp == PM_LONG_WORM) &&
@@ -617,6 +624,11 @@ struct monst *mtmp;
 long nmv;		/* number of moves */
 {
 	int imv = 0;	/* avoid zillions of casts and lint warnings */
+	if(mtmp->m_ap_type == M_AP_MONSTER && (BlockableClearThoughts || (!mtmp->iswiz && !(u.umadness&MAD_DELUSIONS)))){
+		mtmp->m_ap_type = M_AP_NOTHING;
+		mtmp->mappearance = 0;
+		newsym(mtmp->mx, mtmp->my);
+	}
 	if(imprisoned(mtmp)) return;
 
 #if defined(DEBUG) || defined(BETA)
@@ -669,18 +681,8 @@ long nmv;		/* number of moves */
 
 	/* reduce tameness for every 150 moves you are separated */
 	if (get_mx(mtmp, MX_EDOG) && !(EDOG(mtmp)->loyal) && !(EDOG(mtmp)->dominated)
-	 && !(
-	  In_quest(&u.uz) 
-	  && ((Is_qtown(&u.uz) && !flags.stag) || 
-		 (Is_nemesis(&u.uz) && flags.stag)) &&
-	 !(Race_if(PM_DROW) && Role_if(PM_NOBLEMAN) && !flags.initgend) &&
-	 !(Role_if(PM_ANACHRONONAUT) && quest_status.leader_is_dead) &&
-	 !(Role_if(PM_EXILE))
-	 )
-	 && !In_sokoban(&u.uz)
-	 && !Is_gatetown(&u.uz)
-	 && !Is_advtown_level(&u.uz)
-	 && !on_level(&u.uz, &elshava_level)
+	 && !(Race_if(PM_VAMPIRE) && is_vampire(mtmp->data))
+	 && !Is_town_level(&u.uz)
 	) {
 	    int wilder = (imv + 75) / 150;
 		if(mtmp->mwait && !EDOG(mtmp)->friend) wilder = max(0, wilder - 11);
@@ -702,18 +704,7 @@ long nmv;		/* number of moves */
 	 */
 	if (get_mx(mtmp, MX_EDOG) && (carnivorous(mtmp->data) || herbivorous(mtmp->data))){
 	    struct edog *edog = EDOG(mtmp);
-		if(!(In_quest(&u.uz) && 
-			 ((Is_qtown(&u.uz) && !flags.stag) || 
-				(Is_nemesis(&u.uz) && flags.stag)) &&
-			 !(Race_if(PM_DROW) && Role_if(PM_NOBLEMAN) && !flags.initgend) &&
-			 !(Role_if(PM_ANACHRONONAUT) && quest_status.leader_is_dead) &&
-			 !(Role_if(PM_EXILE))
-			)
-			 && !In_sokoban(&u.uz)
-			 && !Is_gatetown(&u.uz)
-			 && !Is_minetown_level(&u.uz)
-			 && !on_level(&u.uz, &elshava_level)
-		) {
+		if(!Is_town_level(&u.uz)) {
 			if ((monstermoves > edog->hungrytime + 500 && mtmp->mhp < 3) ||
 				(monstermoves > edog->hungrytime + 750)
 			){
@@ -852,8 +843,11 @@ boolean portal;
 							: "Its");
 					m_unleash(mtmp, FALSE);
 				}
+				if(mtmp->mtyp == PM_TWIN_SIBLING)
+					migrate_to_level(mtmp, ledger_no(&u.uz), MIGR_EXACT_XY, (coord *)0);
 				continue;
 			}
+			mtmp->mwait = 0L; //No longer waiting
 			if (mtmp->isshk)
 				set_residency(mtmp, TRUE);
 
@@ -912,6 +906,7 @@ boolean portal;
 			mtmp->mtyp == PM_SUZERAIN ||
 			mtmp->mtyp == PM_PUPPET_EMPEROR_XELETH ||
 			mtmp->mtyp == PM_PUPPET_EMPRESS_XEDALLI ||
+			mtmp->mtyp == PM_TWIN_SIBLING ||
 			mtmp->mtame
 		) {
 			if (mtmp->mleashed) {
@@ -1539,9 +1534,11 @@ int enhanced;
 		    {
 		        /* You choked your pet, you cruel, cruel person! */
 		        You_feel("guilty about losing your pet like this.");
-				if(!Role_if(PM_ANACHRONOUNBINDER)) godlist[u.ualign.god].anger++;
 				adjalign(-15);
-				u.hod += 5;
+				if(!Infuture){
+					if(!Role_if(PM_ANACHRONOUNBINDER)) godlist[u.ualign.god].anger++;
+					change_hod(5);
+				}
 		    }
 		}
 		/* eating might have killed it, but that doesn't matter here;
@@ -1633,6 +1630,7 @@ boolean is_summoned;
     initedog(mon);
     newsym(mon->mx, mon->my);
     mon->mpeaceful = 1;
+	EDOG(mon)->loyal = 1;
     set_malign(mon);
     mon->mtame = 10;
     /* this section names the creature "of ______" */

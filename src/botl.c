@@ -3,6 +3,7 @@
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
+#include "botl.h"
 #ifdef TTY_GRAPHICS
 # include "wintty.h"
 #endif
@@ -20,9 +21,111 @@ const char * const enc_stat[] = {
 	"Overloaded"
 };
 
+const char * const enc_stat_abbrev1[] = {
+	"",
+	"Burden",
+	"Stress",
+	"Strain",
+	"Overtax",
+	"Overload"
+};
+
+const char * const enc_stat_abbrev2[] = {
+	"",
+	"Brd",
+	"Strs",
+	"Strn",
+	"Ovtx",
+	"Ovld"
+};
+
 STATIC_DCL void NDECL(bot1);
 STATIC_DCL void NDECL(bot2);
 #endif /* OVL0 */
+
+long get_status_duration(long long mask) {
+	switch (mask) {
+	case BL_MASK_TIMESTOP:
+		return HTimeStop;
+	case BL_MASK_LUST:
+		return HBlowingWinds;
+	case BL_MASK_DEADMAGC:
+		return Deadmagic;
+	case BL_MASK_MISO:
+		return Misotheism;
+	case BL_MASK_CATAPSI:
+		return Catapsi;
+	case BL_MASK_DIMLOCK:
+		return DimensionalLock;
+	default:
+		return 0;
+	}
+}
+
+long long get_status_mask() {
+	long long mask = 0;
+	if(Stoned || Golded)
+		mask |= BL_MASK_STONE;
+	if(Slimed)
+		mask |= BL_MASK_SLIME;
+	if(FrozenAir || Strangled || BloodDrown)
+		mask |= BL_MASK_SUFCT;
+	if(Sick) {
+		if (u.usick_type & SICK_VOMITABLE)
+			mask |= BL_MASK_FOODPOIS;
+		if (u.usick_type & SICK_NONVOMITABLE)
+			mask |= BL_MASK_ILL;
+	}
+	if(Blind && !StumbleBlind)
+		mask |= BL_MASK_BLIND;
+	if(Stunned && !StaggerShock)
+		mask |= BL_MASK_STUN;
+	if(Confusion && !StumbleBlind)
+		mask |= BL_MASK_CONF;
+	if(Hallucination)
+		mask |= BL_MASK_HALLU;
+	if(Panicking)
+		mask |= BL_MASK_PANIC;
+	if(StumbleBlind)
+		mask |= BL_MASK_STMBLNG;
+	if(StaggerShock)
+		mask |= BL_MASK_STGGRNG;
+	if(Babble)
+		mask |= BL_MASK_BABBLE;
+	if(Screaming)
+		mask |= BL_MASK_SCREAM;
+	if(FaintingFits)
+		mask |= BL_MASK_FAINT;
+	if(u.ustuck) {
+		if(sticks(&youmonst) && !u.uswallow)
+			mask |= BL_MASK_UHOLD;
+		else
+			mask |= BL_MASK_HELD;
+	}
+	if(u.ulycn != NON_PM)
+		mask |= BL_MASK_LYCN;
+	if(Invulnerable)
+		mask |= BL_MASK_INVL;
+	if(Levitation)
+		mask |= BL_MASK_LEV;
+	else if(Flying)
+		mask |= BL_MASK_FLY;
+	if(u.usteed)
+		mask |= BL_MASK_RIDE;
+	if(TimeStop)
+		mask |= BL_MASK_TIMESTOP;
+	if(BlowingWinds)
+		mask |= BL_MASK_LUST;
+	if(Deadmagic)
+		mask |= BL_MASK_DEADMAGC;
+	if(Misotheism)
+		mask |= BL_MASK_MISO;
+	if(Catapsi)
+		mask |= BL_MASK_CATAPSI;
+	if(DimensionalLock)
+		mask |= BL_MASK_DIMLOCK;
+        return mask;
+}
 
 #if defined(STATUS_COLORS) && defined(TEXTCOLOR)
 
@@ -109,7 +212,7 @@ void
 apply_color_option(color_option, newbot2, statusline)
      struct color_option color_option;
      const char *newbot2;
-     int statusline; /* apply color on this statusline: 1 or 2 */
+     int statusline; /* apply color on this statusline: 1, 2, or 3 */
 {
     if (!iflags.use_status_colors || !iflags.use_color) return;
     curs(WIN_STATUS, 1, statusline-1);
@@ -119,36 +222,42 @@ apply_color_option(color_option, newbot2, statusline)
 }
 
 void
-add_colored_text(text, newbot2)
-     const char *text;
-     char *newbot2;
+add_colored_text(const char *hilite, const char *text, char *newbot2,
+                 boolean terminal_output, int statusline, boolean first,
+                 long duration)
 {
     char *nb;
     struct color_option color_option;
+    int maxlength = (terminal_output ? min(MAXCO, CO) : MAXCO) - 1;
 
     if (*text == '\0') return;
 
     /* don't add anything if it can't be displayed.
      * Otherwise the color of invisible text may bleed into
      * the statusline. */
-    if (strlen(newbot2) >= min(MAXCO, CO)-1) return;
+    if (strlen(newbot2) >= maxlength) return;
 
-    if (!iflags.use_status_colors) {
-	Sprintf(nb = eos(newbot2), " %s", text);
-	return;
+    if (!iflags.use_status_colors || !terminal_output) {
+        if (duration & TIMEOUT)
+            Snprintf(nb = eos(newbot2), MAXCO - strlen(newbot2), first ? "%s:%ld" : " %s:%ld", text, duration);
+        else
+            Snprintf(nb = eos(newbot2), MAXCO - strlen(newbot2), first ? "%s" : " %s", text);
+        return;
     }
 
-    Strcat(nb = eos(newbot2), " ");
-    curs(WIN_STATUS, 1, 1);
+    Strncat(nb = eos(newbot2), first ? "" : " ", MAXCO - strlen(newbot2));
+    curs(WIN_STATUS, 1, statusline-1);
     putstr(WIN_STATUS, 0, newbot2);
 
-    Strcat(nb = eos(nb), text);
-    curs(WIN_STATUS, 1, 1);
-    color_option = text_color_of(text, text_colors);
+    Strncat(nb = eos(nb), text, MAXCO - strlen(newbot2));
+    if (duration)
+        Snprintf(nb = eos(nb), MAXCO - strlen(newbot2), ":%ld", duration);
+    curs(WIN_STATUS, 1, statusline-1);
+    color_option = text_color_of(hilite, text_colors);
     start_color_option(color_option);
     /* Trim the statusline to always have the end color
      * to have effect. */
-    newbot2[max(0, min(MAXCO, CO)-1)] = '\0';
+    newbot2[max(0, maxlength)] = '\0';
     putstr(WIN_STATUS, 0, newbot2);
     end_color_option(color_option);
 }
@@ -213,6 +322,12 @@ rank_of(lev, monnum, female)
 		monnum = PM_WIZARD;
 	if(monnum == PM_HALF_DRAGON)
 		monnum = PM_BARBARIAN;
+	if(monnum == PM_AWAKENED_VALKYRIE)
+		monnum = PM_VALKYRIE;
+	if(monnum == PM_TRANSCENDENT_VALKYRIE)
+		monnum = PM_VALKYRIE;
+	if(monnum == PM_ITINERANT_PRIESTESS)
+		monnum = PM_PRIESTESS;
 
 	/* Find the role */
 	if(Role_if(monnum)) role = &urole;
@@ -404,9 +519,9 @@ bot1()
 		Sprintf(nb = eos(nb),"%*s", i-j, " ");	/* pad with spaces */
 	if (ACURR(A_STR) > 18) {
 		if (ACURR(A_STR) > STR18(100))
-		    Sprintf(nb = eos(nb),"St:%2d ",ACURR(A_STR)-100);
+		    Sprintf(nb = eos(nb),"St:%2d ",ACURR(A_STR)-20);
 		else if (ACURR(A_STR) < STR18(100))
-		    Sprintf(nb = eos(nb), "St:18/%02d ",ACURR(A_STR)-18);
+		    Sprintf(nb = eos(nb), "St:18/%02d ",(ACURR(A_STR)-18)*5);
 		else
 		    Sprintf(nb = eos(nb),"St:18/** ");
 	} else
@@ -415,10 +530,11 @@ bot1()
 		"Dx:%-1d Co:%-1d In:%-1d Wi:%-1d Ch:%-1d",
 		ACURR(A_DEX), ACURR(A_CON), ACURR(A_INT), ACURR(A_WIS), ACURR(A_CHA));
 	Sprintf(nb = eos(nb), 
-			(u.ualign.type == A_CHAOTIC) ? "  Chaotic" :
-			(u.ualign.type == A_NEUTRAL) ? "  Neutral" : 
-			(u.ualign.type == A_LAWFUL) ?  "  Lawful " :
-			(u.ualign.type == A_VOID) ?    "  Gnostic" : "   Other ");
+			(u.ualign.type == A_CHAOTIC) ? "   Chaotic" :
+			(u.ualign.type == A_NEUTRAL) ? "   Neutral" :
+			(u.ualign.type == A_LAWFUL) ?  "   Lawful " :
+			(u.ualign.type == A_VOID) ?    "   Gnostic" :
+			(u.ualign.type == A_NONE) ?    " Unaligned" : "    Other ");
 #ifdef SCORE_ON_BOTL
 	if (flags.showscore)
 	    Sprintf(nb = eos(nb), " S:%ld", botl_score());
@@ -481,10 +597,10 @@ char *buf;
 			if(In_mordor_forest(&u.uz)) Sprintf(buf, "Forest %d ", dunlev(&u.uz));
 			else if(Is_ford_level(&u.uz)) Sprintf(buf, "Ford ");
 			else if(In_mordor_fields(&u.uz)) Sprintf(buf, "Field ");
-			else if(In_mordor_buildings(&u.uz)) Sprintf(buf, "Fortress %d", dunlev(&u.uz)-5);
+			else if(In_mordor_buildings(&u.uz)) Sprintf(buf, "Fortress %d ", dunlev(&u.uz)-5);
 			else if(Is_spider_cave(&u.uz)) Sprintf(buf, "Spider ");
-			else if(In_mordor_depths(&u.uz)) Sprintf(buf, "Cracks %d", dunlev(&u.uz)-8);
-			else if(In_mordor_borehole(&u.uz)) Sprintf(buf, "Bore %d", dunlev(&u.uz)-11);
+			else if(In_mordor_depths(&u.uz)) Sprintf(buf, "Cracks %d ", dunlev(&u.uz)-8);
+			else if(In_mordor_borehole(&u.uz)) Sprintf(buf, "Bore %d ", dunlev(&u.uz)-11);
 		}
 	} else {
 		/* ports with more room may expand this one */
@@ -494,20 +610,65 @@ char *buf;
 	return ret;
 }
 
-#ifdef DUMP_LOG
-void bot2str(newbot2)
-char* newbot2;
-#else
-STATIC_OVL void
-bot2()
-#endif
+void
+do_statuseffects(char *newbot2, boolean terminal_output, int abbrev, int statusline)
 {
-#ifndef DUMP_LOG
-	char  newbot2[MAXCO];
+  register char *nb = eos(newbot2);
+  int cap = near_capacity();
+  boolean first = statusline == 3; /* first text shown on line */
+  long long mask = get_status_mask();
+#if defined(STATUS_COLORS) && defined(TEXTCOLOR)
+#define status_effect_duration(str1, str2, str3, duration)              \
+  (add_colored_text((str1),                                             \
+                    abbrev == 2 ? (str3) : abbrev == 1 ? (str2) : (str1), \
+                    newbot2, terminal_output, statusline, first,        \
+                    duration),                                          \
+   first = FALSE)
+#define status_effect(str1, str2, str3) status_effect_duration(str1, str2, str3, 0)
+#else
+#define status_effect(str1, str2, str3)                                 \
+  (Snprintf(nb = eos(nb), MAXCO - strlen(newbot2),                      \
+            first ? "%s" : " %s",                                       \
+            abbrev == 2 ? (str3) : abbrev == 1 ? (str2) : (str1)),      \
+   first = FALSE)
+#define status_effect_duration(str1, str2, str3, duration)		\
+  (Snprintf(nb = eos(nb), MAXCO - strlen(newbot2),                      \
+            first ? "%s:%ld" : " %s:%ld",				\
+            abbrev == 2 ? (str3) : abbrev == 1 ? (str2) : (str1),	\
+	    duration),							\
+   first = FALSE)
 #endif
+  for (int i = 0; i < SIZE(status_effects); i++) {
+    struct status_effect status = status_effects[i];
+    if (mask & status.mask & iflags.statuseffects) {
+      long duration = get_status_duration(status.mask);
+      if (duration & TIMEOUT)
+        status_effect_duration(status.name, status.abbrev1, status.abbrev2,
+                               duration);
+      else
+        status_effect(status.name, status.abbrev1, status.abbrev2);
+    }
+    /* Add hunger and encumbrance after foodpois */
+    if (status.mask == BL_MASK_FOODPOIS) {
+        if(u.uhs != NOT_HUNGRY) {
+          if(uclockwork)
+            status_effect(ca_hu_stat[u.uhs], ca_hu_stat[u.uhs], ca_hu_stat[u.uhs]);
+          else
+            status_effect(hu_stat[u.uhs], hu_stat[u.uhs], hu_stat[u.uhs]);
+        }
+        if(cap > UNENCUMBERED)
+          status_effect(enc_stat[cap], enc_stat_abbrev1[cap], enc_stat_abbrev2[cap]);
+    }
+  }
+#undef status_effect
+#undef status_effect_duration
+}
+
+void
+bot2str(char *newbot2, boolean terminal_output, int abbrev, boolean dumplog)
+{
 	register char *nb;
 	int hp, hpmax;
-	int cap = near_capacity();
 #if defined(STATUS_COLORS) && defined(TEXTCOLOR)
         int save_botlx = flags.botlx;
 #endif
@@ -567,135 +728,52 @@ bot2()
                                          (currenttime % 3600) / 60);
   }
 #endif
-
-	if(uclockwork){
-		if(strcmp(ca_hu_stat[u.uhs], "        ")) {
-#if defined(STATUS_COLORS) && defined(TEXTCOLOR)
-    	  add_colored_text(ca_hu_stat[u.uhs], newbot2);
-#else
-		  Sprintf(nb = eos(nb), " %s", ca_hu_stat[u.uhs]);
-#endif
-		}
-	} else{
-	  if(strcmp(hu_stat[u.uhs], "        ")) {
-#if defined(STATUS_COLORS) && defined(TEXTCOLOR)
-	      add_colored_text(hu_stat[u.uhs], newbot2);
-#else
-		  Sprintf(nb = eos(nb), " %s", hu_stat[u.uhs]);
-#endif
-	  }
-	}
-  if(Invulnerable)
-#if defined(STATUS_COLORS) && defined(TEXTCOLOR)
-      add_colored_text("Invl", newbot2);
-#else
-  Strcat(nb = eos(nb), " Invl");
-#endif
-  if(Confusion && !StumbleBlind)
-#if defined(STATUS_COLORS) && defined(TEXTCOLOR)
-      add_colored_text("Conf", newbot2);
-#else
-  Strcat(nb = eos(nb), " Conf");
-#endif
-  if(Sick) {
-      if (u.usick_type & SICK_VOMITABLE)
-#if defined(STATUS_COLORS) && defined(TEXTCOLOR)
-	  add_colored_text("FoodPois", newbot2);
-#else
-      Strcat(nb = eos(nb), " FoodPois");
-#endif
-      if (u.usick_type & SICK_NONVOMITABLE)
-#if defined(STATUS_COLORS) && defined(TEXTCOLOR)
-	  add_colored_text("Ill", newbot2);
-#else
-      Strcat(nb = eos(nb), " Ill");
-#endif
-  }
-  if(Blind && !StumbleBlind)
-#if defined(STATUS_COLORS) && defined(TEXTCOLOR)
-      add_colored_text("Blind", newbot2);
-#else
-  Strcat(nb = eos(nb), " Blind");
-#endif
-  if(Stunned && !StaggerShock)
-#if defined(STATUS_COLORS) && defined(TEXTCOLOR)
-      add_colored_text("Stun", newbot2);
-#else
-  Strcat(nb = eos(nb), " Stun");
-#endif
-/** Insanity messages **/
-  if(Panicking)
-#if defined(STATUS_COLORS) && defined(TEXTCOLOR)
-      add_colored_text("Panic", newbot2);
-#else
-  Strcat(nb = eos(nb), " Panic");
-#endif
-  if(StumbleBlind)
-#if defined(STATUS_COLORS) && defined(TEXTCOLOR)
-      add_colored_text("Stmblng", newbot2);
-#else
-  Strcat(nb = eos(nb), " Stmblng");
-#endif
-  if(StaggerShock)
-#if defined(STATUS_COLORS) && defined(TEXTCOLOR)
-      add_colored_text("Stggrng", newbot2);
-#else
-  Strcat(nb = eos(nb), " Stggrng");
-#endif
-  if(Babble)
-#if defined(STATUS_COLORS) && defined(TEXTCOLOR)
-      add_colored_text("Babble", newbot2);
-#else
-  Strcat(nb = eos(nb), " Babble");
-#endif
-  if(Screaming)
-#if defined(STATUS_COLORS) && defined(TEXTCOLOR)
-      add_colored_text("Scream", newbot2);
-#else
-  Strcat(nb = eos(nb), " Scream");
-#endif
-  if(FaintingFits)
-#if defined(STATUS_COLORS) && defined(TEXTCOLOR)
-      add_colored_text("Faint", newbot2);
-#else
-  Strcat(nb = eos(nb), " Faint");
-#endif
-
-  if(Hallucination)
-#if defined(STATUS_COLORS) && defined(TEXTCOLOR)
-      add_colored_text("Hallu", newbot2);
-#else
-  Strcat(nb = eos(nb), " Hallu");
-#endif
-  if(Slimed)
-#if defined(STATUS_COLORS) && defined(TEXTCOLOR)
-      add_colored_text("Slime", newbot2);
-#else
-  Strcat(nb = eos(nb), " Slime");
-#endif
-  if(FrozenAir || Strangled || BloodDrown)
-#if defined(STATUS_COLORS) && defined(TEXTCOLOR)
-      add_colored_text("Sufct", newbot2);
-#else
-	Sprintf(nb = eos(nb), " Sufct");
-#endif
-  if(cap > UNENCUMBERED)
-#if defined(STATUS_COLORS) && defined(TEXTCOLOR)
-      add_colored_text(enc_stat[cap], newbot2);
-#else
-  Sprintf(nb = eos(nb), " %s", enc_stat[cap]);
-#endif
-#ifdef DUMP_LOG
+  if (!dumplog && (LI <= ROWNO+3 || iflags.statuslines <= 2))
+    do_statuseffects(newbot2, terminal_output, abbrev, 2);
 }
+
 STATIC_OVL void
 bot2()
 {
 	char newbot2[MAXCO];
-	bot2str(newbot2);
+	int abbrev = 0;
+	for (;;) {
+		bot2str(newbot2, FALSE, abbrev, FALSE);
+		if (abbrev >= 2 || strlen(newbot2) < min(MAXCO-1, CO))
+			break;
+		abbrev++;
+	}
+	bot2str(newbot2, TRUE, abbrev, FALSE);
 	int save_botlx = flags.botlx;
-#endif
 	curs(WIN_STATUS, 1, 1);
 	putstr(WIN_STATUS, 0, newbot2);
+	flags.botlx = save_botlx;
+}
+
+void
+bot3str(char *newbot3, boolean terminal_output, int abbrev)
+{
+	newbot3[0] = '\0';      /* so eos() works */
+	do_statuseffects(newbot3, terminal_output, abbrev, 3);
+}
+
+void
+bot3()
+{
+	char newbot3[MAXCO];
+	int abbrev = 0;
+	if (LI <= ROWNO+3 || iflags.statuslines <= 2)
+		return;
+	for (;;) {
+		bot3str(newbot3, FALSE, abbrev);
+		if (abbrev >= 2 || strlen(newbot3) < min(MAXCO-1, CO))
+			break;
+		abbrev++;
+	}
+	bot3str(newbot3, TRUE, abbrev);
+	int save_botlx = flags.botlx;
+	curs(WIN_STATUS, 1, 2);
+	putstr(WIN_STATUS, 0, newbot3);
 	flags.botlx = save_botlx;
 }
 
@@ -708,6 +786,7 @@ bot()
 	}
 	bot1();
 	bot2();
+	bot3();
 	flags.botl = flags.botlx = 0;
 }
 
@@ -716,6 +795,7 @@ force_bot()
 {
 	bot1();
 	bot2();
+	bot3();
 	flags.botl = flags.botlx = 0;
 	return MOVE_CANCELLED;
 }

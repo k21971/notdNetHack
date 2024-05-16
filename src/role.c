@@ -275,7 +275,7 @@ struct Role roles[] = {
 	PM_MONK, NON_PM, NON_PM,
 	PM_GRAND_MASTER, PM_ABBOT, PM_MASTER_KAEN,
 	NON_PM, NON_PM, NON_PM, NON_PM,
-	ART_EYES_OF_THE_OVERWORLD,
+	ART_EYE_OF_THE_OVERWORLD,
 	MA_HUMAN|MA_CLOCK|MA_ANIMAL|MA_DRAGON|MA_FEY|MA_ETHEREAL, ROLE_MALE|ROLE_FEMALE |
 	  ROLE_LAWFUL|ROLE_NEUTRAL|ROLE_CHAOTIC,
 	/* Str Int Wis Dex Con Cha */
@@ -802,7 +802,7 @@ const struct Race races[] = {
 	NIGHTVISION3,
 	SPE_REMOVE_CURSE, -10
 },
-{	"etherealoid", "etherealoidic", "etherealoid-kind", "Eth",
+{	"Etherealoid", "etherealoidic", "etherealoid-kind", "Eth",
 	{0,0},
 	PM_ETHEREALOID, NON_PM, NON_PM, NON_PM,
 	ROLE_MALE|ROLE_FEMALE | ROLE_NEUTRAL,
@@ -858,21 +858,6 @@ const struct Race races[] = {
 	{  0, 0,  100, 0, 100, 0 },		/* Energy */
 	NORMALNIGHTVIS
 	//Note: Bonus to all spells.
-},
-{	"Inheritor", "human", "humanity", "Inh",
-	{"man", "woman"},
-	PM_INHERITOR, NON_PM, PM_HUMAN_MUMMY, PM_HUMAN,
-	ROLE_MALE|ROLE_FEMALE |
-	  ROLE_LAWFUL|ROLE_NEUTRAL|ROLE_CHAOTIC,
-	/*MA_HUMAN disabled*/ 0, 0, MA_GNOME|MA_ORC|MA_ELF,
-	/*    Str     Int Wis Dex Con Cha */
-	{      3,      3,  3,  3,  3,  3 },
-	{ STR18(100), 18, 18, 18, 18, 18 },
-	/* Init   Lower  Higher */
-	{  2, 0,  0, 2,  1, 0 },	/* Hit points */
-	{  1, 0,  2, 0,  2, 0 },		/* Energy */
-	NORMALNIGHTVIS,
-	SPE_ABJURATION, -20
 },
 {	"orc", "orcish", "orcdom", "Orc",
 	{0, 0},
@@ -988,7 +973,7 @@ struct Race android =
 	MA_CLOCK, 0, MA_ORC,
 	/*  Str    Int Wis Dex Con Cha */
 	{    3,     3,  3,  3,  3,  3 },
-	{   20,    18, 16, 22, 22, 18 },
+	{   STR19(20),    18, 16, 22, 22, 18 },
 	/* Init   Lower  Higher */
 	{  2, 0,  1, 3,  1, 0 },	/* Hit points */
 	{  1, 0,  1, 0,  1, 0 },	/* Energy */
@@ -1011,6 +996,48 @@ const struct Align aligns[] = {
 	{"evil",	"unaligned",	"Una",	0,		A_NONE},
 	{"void",	"non-aligned",	"Non",	0,		A_VOID}
 };
+
+
+
+const struct Species species[] = {
+	{"none", 0, NONE_SPECIES},
+	{"ash", ENT_ASH, ENT_SPECIES},
+	{"beech", ENT_BEECH, ENT_SPECIES},
+	{"bluegum", ENT_BLUEGUM, ENT_SPECIES},
+	{"cedar", ENT_CEDAR, ENT_SPECIES},
+	{"chestnut", ENT_CHESTNUT, ENT_SPECIES},
+	{"cypress", ENT_CYPRESS, ENT_SPECIES},
+	{"dogwood", ENT_DOGWOOD, ENT_SPECIES},
+	{"elder", ENT_ELDER, ENT_SPECIES},
+	{"elm", ENT_ELM, ENT_SPECIES},
+	{"fir", ENT_FIR, ENT_SPECIES},
+	{"ginkgo", ENT_GINKGO, ENT_SPECIES},
+	{"larch", ENT_LARCH, ENT_SPECIES},
+	{"locust", ENT_LOCUST, ENT_SPECIES},
+	{"magnolia", ENT_MAGNOLIA, ENT_SPECIES},
+	{"maple", ENT_MAPLE, ENT_SPECIES},
+	{"mimosa", ENT_MIMOSA, ENT_SPECIES},
+	{"methuselah", ENT_METHUSELAH, ENT_SPECIES},
+	{"oak", ENT_OAK, ENT_SPECIES},
+	{"poplar", ENT_POPLAR, ENT_SPECIES},
+	{"redwood", ENT_REDWOOD, ENT_SPECIES},
+	{"spruce", ENT_SPRUCE, ENT_SPECIES},
+	{"willow", ENT_WILLOW, ENT_SPECIES},
+	{"yew", ENT_YEW, ENT_SPECIES},
+	{"white", AD_COLD, DRAGON_SPECIES},
+	{"red", AD_FIRE, DRAGON_SPECIES},
+	{"orange", AD_SLEE, DRAGON_SPECIES},
+	{"blue", AD_ELEC, DRAGON_SPECIES},
+	{"green", AD_DRST, DRAGON_SPECIES},
+	{"yellow", AD_ACID, DRAGON_SPECIES},
+	{"gray", AD_MAGM, DRAGON_SPECIES},
+	{"chaos", AD_RBRE, DRAGON_SPECIES},
+	{"black", AD_DISN, DRAGON_SPECIES},
+	{"bronze", COPPER, CLK_SPECIES},
+	{"iron", IRON, CLK_SPECIES},
+	{"green-steel", GREEN_STEEL, CLK_SPECIES},
+};
+
 
 STATIC_DCL char * FDECL(promptsep, (char *, int));
 STATIC_DCL int FDECL(role_gendercount, (int));
@@ -1284,6 +1311,112 @@ str2align(str)
 		return i;
 	    /* Or the filecode? */
 	    if (!strcmpi(str, aligns[i].filecode))
+		return i;
+	}
+	if ((len == 1 && (*str == '*' || *str == '@')) ||
+		!strncmpi(str, randomstr, len))
+	    return ROLE_RANDOM;
+
+	/* Couldn't find anything appropriate */
+	return ROLE_NONE;
+}
+
+boolean
+validspecies(rolenum, racenum, gendnum, speciesnum)
+	int rolenum, racenum, gendnum, speciesnum;
+{
+	if (speciesnum < 0 || speciesnum >= ROLE_SPECIES)
+		return FALSE; 
+	if(races[racenum].malenum == PM_ENT){
+		return species[speciesnum].type == ENT_SPECIES;
+	} else if(races[racenum].malenum == PM_HALF_DRAGON){
+		if(species[speciesnum].type != DRAGON_SPECIES)
+			return FALSE;	
+		int breath_type = species[speciesnum].value;
+		if(roles[rolenum].malenum == PM_NOBLEMAN){
+			if(genders[gendnum].allow == ROLE_FEMALE) 
+				return breath_type == AD_MAGM || breath_type == AD_COLD;
+		}
+		if(roles[rolenum].malenum == PM_MADMAN){
+			if(genders[gendnum].allow == ROLE_FEMALE)
+				return breath_type == AD_RBRE;
+			else
+				return breath_type == AD_FIRE;
+		}
+		if(roles[rolenum].malenum == PM_ANACHRONONAUT){
+			return breath_type == AD_DISN;
+		}
+		return breath_type == AD_COLD ||
+			breath_type == AD_FIRE ||
+			breath_type == AD_SLEE ||
+			breath_type == AD_ELEC ||
+			breath_type == AD_DRST ||
+			breath_type == AD_ACID;
+	} else if(races[racenum].malenum == PM_CLOCKWORK_AUTOMATON
+		  /* ana and acu clockworks are androids, who don't have species */
+		  && roles[rolenum].malenum != PM_ANACHRONONAUT
+		  && roles[rolenum].malenum != PM_ANACHRONOUNBINDER){
+		return species[speciesnum].type == CLK_SPECIES;
+	}
+	return FALSE;
+
+}
+
+boolean
+validdescendant(rolenum)
+int rolenum;
+{
+	if(rolenum < 0) return FALSE;
+	return roles[rolenum].malenum == PM_MADMAN || 
+		roles[rolenum].malenum == PM_NOBLEMAN || 
+		roles[rolenum].malenum == PM_ARCHEOLOGIST || 
+		roles[rolenum].malenum == PM_KNIGHT || 
+		roles[rolenum].malenum == PM_PIRATE || 
+		roles[rolenum].malenum == PM_ROGUE || 
+		roles[rolenum].malenum == PM_SAMURAI || 
+		roles[rolenum].malenum == PM_TOURIST || 
+		roles[rolenum].malenum == PM_VALKYRIE || 
+		roles[rolenum].malenum == PM_CONVICT;
+}
+
+
+int
+randspecies(rolenum, racenum, gendnum)
+	int rolenum, racenum, gendnum;
+{
+	int i, n = 0;
+
+	/* Count the number of valid species */
+	for (i = 0; i < ROLE_SPECIES; i++){
+		n += validspecies(rolenum, racenum, gendnum, i);
+	}
+	/* Pick a random species */
+	if (n) n = rn2(n);
+	for (i = 0; i < ROLE_SPECIES; i++){
+		if(!validspecies(rolenum,racenum,gendnum,i)) continue;
+	    	if (n) n--;
+	    	else return (i);
+	}
+	/* This role/race has no permitted species so use the none option */
+	return 0;
+}
+
+
+int
+str2species(str)
+	char *str;
+{
+	int i, len;
+
+	/* Is str valid? */
+	if (!str || !str[0])
+	    return ROLE_NONE;
+
+	/* Match as much of str as is provided */
+	len = strlen(str);
+	for (i = 0; i < ROLE_SPECIES; i++) {
+	    /* Does it match the adjective? */
+	    if (!strncmpi(str, species[i].name, len))
 		return i;
 	}
 	if ((len == 1 && (*str == '*' || *str == '@')) ||
@@ -1574,6 +1707,31 @@ int rolenum, racenum, gendnum, pickhow;
     return ROLE_NONE;
 }
 
+int
+pick_species(rolenum, racenum, gendnum, pickhow)
+int rolenum, racenum, gendnum, pickhow;
+{
+    int i;
+    int species_ok = 0;
+
+    for (i = 0; i < ROLE_ALIGNS; i++) {
+	if (validspecies(rolenum, racenum, gendnum, i))
+	    species_ok++;
+    }
+    if (species_ok == 0 || (species_ok > 1 && pickhow == PICK_RIGID))
+	return ROLE_NONE;
+    species_ok = rn2(species_ok);
+    for (i = 0; i < ROLE_SPECIES; i++) {
+	if (validspecies(rolenum, racenum, gendnum, i)) {
+	    if (species_ok == 0)
+		return i;
+	    else
+		species_ok--;
+	}
+    }
+    return ROLE_NONE;
+}
+
 void
 rigid_role_checks()
 {
@@ -1612,7 +1770,8 @@ rigid_role_checks()
 #define BP_GEND		1
 #define BP_RACE		2
 #define BP_ROLE		3
-#define NUM_BP		4
+#define BP_DESC		4
+#define NUM_BP		5
 
 STATIC_VAR char pa[NUM_BP], post_attribs;
 
@@ -1658,9 +1817,9 @@ int racenum;
 }
 
 char *
-root_plselection_prompt(suppliedbuf, buflen, rolenum, racenum, gendnum, alignnum)
+root_plselection_prompt(suppliedbuf, buflen, rolenum, racenum, descendantnum, gendnum, alignnum)
 char *suppliedbuf;
-int buflen, rolenum, racenum, gendnum, alignnum;
+int buflen, rolenum, racenum, descendantnum, gendnum, alignnum;
 {
 	int k, gendercount = 0, aligncount = 0;
 	char buf[BUFSZ];
@@ -1754,8 +1913,18 @@ int buflen, rolenum, racenum, gendnum, alignnum;
 		pa[BP_RACE] = 1;
 		post_attribs++;
 	}
-	/* <your lawful female gnomish> || <your lawful female gnome> */
 
+	/* <your lawful female gnomish> || <your lawful female gnome> */
+	if (descendantnum > 0) {
+		if (donefirst) Strcat(buf, " ");
+		Strcat(buf, "descendant");
+		donefirst = TRUE;
+	} else if (descendantnum < 0) { // if zeroed, pretend it doesn't exist
+		pa[BP_DESC] = 1;
+		post_attribs++;
+	}
+
+	/* <your lawful female gnomish descendant> || <your lawful female gnome descendant> */
 	if (validrole(rolenum)) {
 		if (donefirst) Strcat(buf, " ");
 		if (gendnum != ROLE_NONE) {
@@ -1793,9 +1962,9 @@ int buflen, rolenum, racenum, gendnum, alignnum;
 }
 
 char *
-build_plselection_prompt(buf, buflen, rolenum, racenum, gendnum, alignnum)
+build_plselection_prompt(buf, buflen, rolenum, racenum, descendantnum, gendnum, alignnum)
 char *buf;
-int buflen, rolenum, racenum, gendnum, alignnum;
+int buflen, rolenum, racenum, descendantnum, gendnum, alignnum;
 {
 	const char *defprompt = "Shall I pick a character for you? [ynq] ";
 	int num_post_attribs = 0;
@@ -1813,7 +1982,7 @@ int buflen, rolenum, racenum, gendnum, alignnum;
 	/* <your> */
 
 	(void)  root_plselection_prompt(eos(tmpbuf), buflen - strlen(tmpbuf),
-					rolenum, racenum, gendnum, alignnum);
+					rolenum, racenum, descendantnum, gendnum, alignnum);
 	Sprintf(buf, "%s", s_suffix(tmpbuf));
 
 	/* buf should now be:
@@ -1841,6 +2010,10 @@ int buflen, rolenum, racenum, gendnum, alignnum;
 			(void) promptsep(eos(buf), num_post_attribs);
 			Strcat(buf, "alignment");
 		}
+		if (pa[BP_DESC]) {
+			(void) promptsep(eos(buf), num_post_attribs);
+			Strcat(buf, "inheritance");
+		}
 	}
 	Strcat(buf, " for you? [ynq] ");
 	return buf;
@@ -1850,6 +2023,7 @@ int buflen, rolenum, racenum, gendnum, alignnum;
 #undef BP_GEND
 #undef BP_RACE
 #undef BP_ROLE
+#undef BP_DESC
 #undef NUM_BP
 
 void
@@ -2499,6 +2673,15 @@ int newgame;
 		COPY_OBJ_DESCR(objects[HEAVY_MACHINE_GUN], objects[HEAVY_GUN]);
 		COPY_OBJ_DESCR(objects[GRENADE_LAUNCHER], objects[HEAVY_GUN]);
 	}
+	/* Adjust lovemask and hatemask */
+	if(Role_if(PM_CONVICT) || Role_if(PM_MADMAN)){
+        urace.hatemask |= urace.lovemask;   /* Hated by the race's allies */
+        urace.lovemask = 0; /* Pariahs of their race */
+	}
+	else if(Role_if(PM_HEALER) && Race_if(PM_DROW)){
+		urace.lovemask |= MA_FEY|MA_ELF;
+		urace.hatemask = MA_ORC;
+	}
 
 	/* Artifacts are fixed in hack_artifacts() */
 
@@ -2643,6 +2826,8 @@ give_ascension_trophy()
 		achieve.trophies |= HALF_ASC;
 	else if(Race_if(PM_YUKI_ONNA))
 		achieve.trophies |= YUKI_ASC;
+	if(Race_if(PM_SALAMANDER) || Race_if(PM_ETHEREALOID) || Race_if(PM_ENT))
+		achieve.new_races = 1;
 	int i;
 	int keys = 0;
 	for(i = 0; i<9; i++){

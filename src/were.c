@@ -149,6 +149,8 @@ int pm;
 		case PM_MOONSHADOW:       return(PM_CAILLEA_ELADRIN);
 		case PM_DRACAE_ELADRIN:	  return(PM_MOTHERING_MASS);
 		case PM_MOTHERING_MASS:	  return(PM_DRACAE_ELADRIN);
+		case PM_LIGHT_ELF:	      return(PM_UNBODIED);
+		case PM_UNBODIED:	      return(PM_LIGHT_ELF);
 		case PM_GWYNHARWYF:		  return(PM_FURIOUS_WHIRLWIND);
 		case PM_FURIOUS_WHIRLWIND: return(PM_GWYNHARWYF);
 		case PM_ASCODEL:		  return(PM_BLOODY_SUNSET);
@@ -176,6 +178,8 @@ int pm;
 		case PM_GIANT_STONEGUARD: return(PM_DUERGAR_STONEGUARD);
 		case PM_DUERGAR_DEBILITATOR: return(PM_DUERGAR_ANNIHILATOR);
 		case PM_DUERGAR_ANNIHILATOR: return(PM_DUERGAR_DEBILITATOR);
+		case PM_DUERGAR_DEEPKING: return(PM_GIANT_DEEPKING);
+		case PM_GIANT_DEEPKING: return(PM_DUERGAR_DEEPKING);
 
 		case PM_LURKING_HAND: return(PM_BLASPHEMOUS_HAND);
 		case PM_BLASPHEMOUS_HAND: return(PM_LURKING_HAND);
@@ -231,48 +235,11 @@ int mtyp;
 }
 
 void
-new_were(mon)
+were_transform(mon, pm)
 struct monst *mon;
+int pm;
 {
-	int pm;
-	struct permonst *olddata = mon->data;
 	struct obj *otmp;
-
-	pm = counter_were(monsndx(mon->data));
-	if(!pm) {
-	    impossible("unknown lycanthrope %s.", mon->data->mname);
-	    return;
-	}
-	
-	if((is_heladrin(mon->data) || mon->mtyp == PM_YUKI_ONNA) && nonthreat(mon))
-		return;
-	
-	if(mon == u.ustuck && u.uswallow)
-		expels(mon, mon->data, TRUE);
-	else if(u.ustuck == mon)
-		u.ustuck = 0;
-	
-	if(DEADMONSTER(mon) || MIGRATINGMONSTER(mon))
-		return;
-	
-	if(canseemon(mon) && !Hallucination) {
-		if(mon->mtyp == PM_BLASPHEMOUS_HAND)
-			pline("%s relaxes its gesture.", Monnam(mon));
-		else if(mon->mtyp == PM_LURKING_HAND)
-			pline("%s adopts a blasphemous gesture.", Monnam(mon));
-		else if(mon->mtyp != PM_ANUBITE && mon->mtyp != PM_ANUBAN_JACKAL
-		  && !is_eladrin(mon->data) && !is_yochlol(mon->data)
-		  && !(mon->mtyp == PM_YUKI_ONNA || mon->mtyp == PM_SNOW_CLOUD)
-		  && !(mon->mtyp == PM_SELKIE || mon->mtyp == PM_SEAL)
-		  && !(mon->mtyp == PM_INCUBUS || mon->mtyp == PM_SUCCUBUS)
-		  && !is_duergar(mon)
-		) pline("%s changes into %s.", Monnam(mon),
-			is_human(&mons[pm]) ? "a human" :
-			an(mons[pm].mname+4));
-		else pline("%s changes into %s.", Monnam(mon),
-			an(mons[pm].mname));
-	}
-
 	set_mon_data(mon, pm);
 	if (mon->msleeping || !mon->mcanmove) {
 	    /* transformation wakens and/or revitalizes */
@@ -288,7 +255,15 @@ struct monst *mon;
 		new_light_source(LS_MONSTER, (genericptr_t)mon, emits_light_mon(mon));
 	}
 	newsym(mon->mx,mon->my);
-	if(is_eeladrin(mon->data) || mon->mtyp == PM_SNOW_CLOUD){
+
+	if(mon->mtyp == PM_UNBODIED){
+		mon->m_insight_level = 15;
+	}
+	else if(mon->mtyp == PM_LIGHT_ELF){
+		mon->m_insight_level = 0;
+	}
+
+	if(is_eeladrin(mon->data) || mon->mtyp == PM_SNOW_CLOUD || (mon->mtyp != PM_UNEARTHLY_DROW && is_yochlol(mon->data))){
 		struct obj *mw_tmp = MON_WEP(mon);
 		struct obj *msw_tmp = MON_SWEP(mon);
 		for(otmp = mon->minvent; otmp; otmp = otmp->nobj){
@@ -321,7 +296,7 @@ struct monst *mon;
 		}
 		m_dowear(mon, TRUE);
 		init_mon_wield_item(mon);
-	} else if(is_heladrin(mon->data) || mon->mtyp == PM_YUKI_ONNA){
+	} else if(is_heladrin(mon->data) || mon->mtyp == PM_UNEARTHLY_DROW){
 		m_dowear(mon, TRUE);
 		init_mon_wield_item(mon);
 	} else if(is_duergar(mon)){
@@ -333,6 +308,50 @@ struct monst *mon;
 		mon_break_armor(mon, FALSE);
 	} else mon_break_armor(mon, FALSE);
 	possibly_unwield(mon, FALSE);
+}
+
+void
+new_were(mon)
+struct monst *mon;
+{
+	int pm;
+
+	if(nonthreat(mon))
+		return;
+	
+	pm = counter_were(monsndx(mon->data));
+	if(!pm) {
+	    impossible("unknown lycanthrope %s.", mon->data->mname);
+	    return;
+	}
+	
+	if(mon == u.ustuck && u.uswallow)
+		expels(mon, mon->data, TRUE);
+	else if(u.ustuck == mon)
+		u.ustuck = 0;
+	
+	if(DEADMONSTER(mon) || MIGRATINGMONSTER(mon))
+		return;
+	
+	if(canseemon(mon) && !Hallucination) {
+		if(mon->mtyp == PM_BLASPHEMOUS_HAND)
+			pline("%s relaxes its gesture.", Monnam(mon));
+		else if(mon->mtyp == PM_LURKING_HAND)
+			pline("%s adopts a blasphemous gesture.", Monnam(mon));
+		else if(mon->mtyp != PM_ANUBITE && mon->mtyp != PM_ANUBAN_JACKAL
+		  && !is_eladrin(mon->data) && !is_yochlol(mon->data)
+		  && !(mon->mtyp == PM_YUKI_ONNA || mon->mtyp == PM_SNOW_CLOUD)
+		  && !(mon->mtyp == PM_SELKIE || mon->mtyp == PM_SEAL)
+		  && !(mon->mtyp == PM_INCUBUS || mon->mtyp == PM_SUCCUBUS)
+		  && !is_duergar(mon)
+		) pline("%s changes into %s.", Monnam(mon),
+			is_human(&mons[pm]) ? "a human" :
+			an(mons[pm].mname+4));
+		else pline("%s changes into %s.", Monnam(mon),
+			an(mons[pm].mname));
+	}
+
+	were_transform(mon, pm);
 }
 
 int

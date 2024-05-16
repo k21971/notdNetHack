@@ -134,6 +134,19 @@ not_capable()
 		
 		if(cumlev >= MIN_QUEST_LEVEL) return FALSE;
 	}
+	else if(Role_if(PM_HEALER)){
+		struct monst *petm;
+		int maxlev = 0;
+		for(petm = fmon; petm; petm = petm->nmon){
+			if(petm->mtame){
+				maxlev = max(maxlev, petm->m_lev);
+			}
+		}
+		maxlev = maxlev/2 + maxlev%2;
+		maxlev += u.ulevel/2;
+		
+		if(maxlev >= MIN_QUEST_LEVEL) return FALSE;
+	}
 	
 	if(Pantheon_if(PM_GNOME)) return((boolean)(u.ulevel < GNOMISH_MIN_QUEST_LEVEL));
 	else if(Race_if(PM_HALF_DRAGON) && Role_if(PM_NOBLEMAN) && flags.initgend) return FALSE;
@@ -261,7 +274,10 @@ struct obj *obj;	/* quest artifact; possibly null if carrying Amulet */
 			}
 		}
 	} else {
-	    qt_pager((!Qstat(got_thanks) ? QT_OFFEREDIT : is_primary_quest_artifact(obj) ? QT_OFFEREDIT2 : QT_OFFERART2) + (flags.stag ? QT_TURNEDSTAG : 0));
+		if(Role_if(PM_MADMAN) && mvitals[PM_STRANGER].died)
+			qt_pager(QT_MADMAN_OFFEREDIT);
+		else
+			qt_pager((!Qstat(got_thanks) ? QT_OFFEREDIT : is_primary_quest_artifact(obj) ? QT_OFFEREDIT2 : QT_OFFERART2) + (flags.stag ? QT_TURNEDSTAG : 0));
 	    /* should have obtained bell during quest;
 	       if not, suggest returning for it now */
 	    if ((otmp = carrying(BELL_OF_OPENING)) == 0 && !Role_if(PM_ANACHRONONAUT))

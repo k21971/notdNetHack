@@ -24,6 +24,7 @@ boolean	known;
 static NEARDATA const char readable[] =
 		   { ALL_CLASSES, SCROLL_CLASS, TILE_CLASS, SPBOOK_CLASS, 0 };
 static const char all_count[] = { ALLOW_COUNT, ALL_CLASSES, 0 };
+static const int random_cloud_types[] = { AD_FIRE, AD_COLD, AD_ELEC, AD_ACID};
 
 static void FDECL(wand_explode, (struct obj *));
 static void NDECL(do_class_genocide);
@@ -446,11 +447,11 @@ doread()
 		return MOVE_READ;
 	} else if(scroll->otyp == MISOTHEISTIC_FRAGMENT){
 		if (Blind) {
-			pline("Some mysterious force holds these mirrored fragments together in a rough aproximation of a pyramid.");
+			pline("Some mysterious force holds these mirrored fragments together in a rough approximation of a pyramid.");
 			You_cant("see the fragments!");
 			return MOVE_STANDARD;
 		} else {
-			pline("Some mysterious force holds these mirrored fragments together in a rough aproximation of a pyramid.");
+			pline("Some mysterious force holds these mirrored fragments together in a rough approximation of a pyramid.");
 			You("are not reflected in the shards.");
 			You("have the unnerving feeling that there is something inside the pyramid, barely hidden from view.");
 			/*Note: this is intended to work for any PC, not just Binders */
@@ -910,10 +911,11 @@ struct obj *scroll;
 				pline("Suddenly, the glyphs glow in rainbow hues and escape from the fracturing disk!");
 				pline("Some of the glyphs get trapped in your %s!", (eyecount(youracedata) == 1) ? body_part(EYE) : makeplural(body_part(EYE)));
 				know_random_obj(objcount);
-				if(!u.uinsight || !rn2(u.uinsight)){
+				if(!u.udisks || !rn2(u.udisks)){
 					change_uinsight(1);
 					objcount++;
 				}
+				u.udisks++;
 				more_experienced(d(objcount, 100), 0);
 				newexplevel();
 			}
@@ -946,8 +948,9 @@ struct obj *scroll;
 				//Insight
 				effectcount = 1;
 				for(rolls = rnd(8); rolls > 0; rolls--){
-					if(!u.uinsight || !rn2(u.uinsight))
+					if(!u.udisks || !rn2(u.udisks))
 						effectcount++;
+					u.udisks++;
 				}
 				xp += d(effectcount,100);
 				change_uinsight(effectcount);
@@ -1448,20 +1451,6 @@ int curse_bless;
 			else if(is_cursed) obj->spe = 0;
 			else obj->spe = rn1(12,12);
 		break;
-	    case TREPHINATION_KIT:
-		if (is_cursed) stripspe(obj);
-		else if (is_blessed) {
-		    obj->spe += rnd(3);
-		    p_glow2(obj, NH_BLUE);
-			if(obj->spe > 6)
-				obj->spe = 6;
-		} else {
-		    if (obj->spe < 5) {
-			obj->spe++;
-			p_glow1(obj);
-		    } else pline1(nothing_happens);
-		}
-		break;
 	    case CRYSTAL_BALL:
 		if (is_cursed) stripspe(obj);
 		else if (is_blessed) {
@@ -1505,6 +1494,7 @@ int curse_bless;
 	    case HORN_OF_PLENTY:
 	    case BAG_OF_TRICKS:
 	    case CAN_OF_GREASE:
+	    case TREPHINATION_KIT:
 		if (is_cursed) stripspe(obj);
 		else if (is_blessed) {
 		    if (obj->spe <= 10)
@@ -1636,7 +1626,10 @@ forget_map(howmuch)
 	int howmuch;
 {
 	register int zx, zy;
-
+	
+	if(iflags.no_forget_map)
+		return;
+	
 	if (In_sokoban(&u.uz))
 	    return;
 
@@ -1679,6 +1672,9 @@ forget_levels(percent)
 	int indices[MAXLINFO];
 
 	if (percent == 0) return;
+
+	if(iflags.no_forget_map)
+		return;
 
 	if (percent <= 0 || percent > 100) {
 	    impossible("forget_levels: bad percent %d", percent);
@@ -1772,7 +1768,7 @@ int howmuch;
 		howmuch /= 2;
 
 	forget_map(howmuch);
-	forget_traps();
+	// forget_traps();
 	
 	//Silently reduce the doubt timer (itimeout_incr handles negative timeouts)
 	if(HDoubt){
@@ -2067,6 +2063,10 @@ struct obj	*sobj;
 		} else {	/* armor and scroll both cursed */
 		    Your("%s %s.", xname(otmp), otense(otmp, "vibrate"));
 		    if (otmp->spe >= -6) otmp->spe--;
+			if (otmp->spe >= -6) {
+				otmp->spe += -1;
+				adj_abon(otmp, -1);
+			}
 		    make_stunned(HStun + rn1(10, 10), TRUE);
 		}
 	    }
@@ -2495,7 +2495,7 @@ struct obj	*sobj;
 		} else {
 			if(Role_if(PM_MADMAN)){
 				You_feel("ashamed of wiping your own memory.");
-				u.hod += sobj->cursed ? 5 : 2;
+				change_hod(sobj->cursed ? 5 : 2);
 			}
 			exercise(A_WIS, FALSE);
 		}
@@ -2801,7 +2801,14 @@ struct obj	*sobj;
 		    You("smell rotten eggs.");
 		    return 0;
 		}
-		(void) create_gas_cloud(cc.x, cc.y, 3+bcsign(sobj), 8+4*bcsign(sobj), TRUE);
+		if(confused){
+			struct region_arg cloud_data;
+			cloud_data.damage = 8+4*bcsign(sobj);
+			cloud_data.adtyp = random_cloud_types[rn2(SIZE(random_cloud_types))];
+			(void) create_generic_cloud(cc.x, cc.y, 3+bcsign(sobj), &cloud_data, TRUE);
+		} else {
+			(void) create_gas_cloud(cc.x, cc.y, 3+bcsign(sobj), 8+4*bcsign(sobj), TRUE);
+		}
 		break;
 	}
 	case SCR_ANTIMAGIC:{
@@ -2946,6 +2953,7 @@ struct obj	*sobj;
 		goto returnscroll;
 	} else if(Is_nowhere(&u.uz)){
 		pline("Nothing happens.");
+		goto returnscroll;
 	} else if(Is_sanctum(&u.uz)){
 		pline("This place is much too unholy for the scroll to work.");
 		goto returnscroll;
@@ -2983,6 +2991,7 @@ struct obj	*sobj;
 		 pline("It's meaning is clear in your mind, and the pronunciation obvious.");
 		 known = TRUE; //id the scroll
 		 more_experienced(777,0);//the knowledge from the scroll transfers to you.
+		 newexplevel();
 		 if (Upolyd) {// the lawful energies rebuild your body
 			u.mh += u.ualign.record;
 			if(u.mhmax < u.mh)
@@ -3026,7 +3035,7 @@ struct obj	*sobj;
 		else if(u.ualign.type == A_NEUTRAL || (u.ualign.type == A_LAWFUL && u.ualign.record > 0)){
 		 pline("It's meaning is unclear, and you think you didn't pronounce it quite right.");
 		 if (u.uswallow) {
-			if(u.ustuck->data->maligntyp < A_NEUTRAL) monflee(u.ustuck, 7, FALSE, FALSE);
+			if(is_chaotic_mon(u.ustuck)) monflee(u.ustuck, 7, FALSE, FALSE);
 	break;
 		 }//else:
 	     for (i = -bd; i <= bd; i++) for(j = -bd; j <= bd; j++) {
@@ -3324,8 +3333,10 @@ do_class_genocide()
 				    /* finish genociding this class of
 				       monsters before ultimately dying */
 				    gameover = TRUE;
-				} else
+				} else {
 				    rehumanize();
+					change_gevurah(1); //cheated death.
+				}
 			    }
 			    /* Self-genocide if it matches either your race
 			       or role.  Assumption:  male and female forms
@@ -3333,7 +3344,10 @@ do_class_genocide()
 			    if (i == urole.malenum || i == urace.malenum) {
 				u.uhp = -1;
 				if (Upolyd) {
-				    if (!feel_dead++) You_feel("dead inside.");
+				    if (!feel_dead++){
+						You_feel("dead inside.");
+						change_gevurah(20); //cheated death.
+					}
 				} else {
 				    if (!feel_dead++) You("die.");
 				    gameover = TRUE;
@@ -3503,10 +3517,12 @@ int how;
 			delayed_killer = killer;
 			killer = 0;
 			You_feel("dead inside.");
+			change_gevurah(20); //cheated death.
 		} else
 			done(GENOCIDED);
 	    } else if (ptr == youmonst.data) {
-		rehumanize();
+			rehumanize();
+			change_gevurah(1); //cheated death.
 	    }
 	    reset_rndmonst(mndx);
 	    kill_genocided_monsters();
@@ -3648,13 +3664,13 @@ char *in_buff;
 	struct permonst *whichpm;
 	struct monst *mtmp = (struct monst *)0;
 	boolean madeany = FALSE;
-	boolean maketame, makeloyal, makepeaceful, makehostile, makesummoned;
+	boolean maketame, makeloyal, makepeaceful, makehostile, makesummoned, makemale, makefemale;
 	int l = 0;
 
 	tries = 0;
 	do {
 	    which = urole.malenum;	/* an arbitrary index into mons[] */
-	    maketame = makeloyal = makepeaceful = makehostile = makesummoned = FALSE;
+	    maketame = makeloyal = makepeaceful = makehostile = makesummoned = makemale = makefemale = FALSE;
 		if(in_buff){
 			Sprintf(buf, "%s", in_buff);
 		}
@@ -3663,7 +3679,7 @@ char *in_buff;
 			   buf);
 		}
 	    bufp = mungspaces(buf);
-	    if (*bufp == '\033') return (struct monst *)0;
+	    if (*bufp == '\033' || !strncmpi(bufp, "nothing", l = 7) || !strncmpi(bufp, "nil", l = 3)) return (struct monst *)0;
 
 		/* grab all prefixes -- this *requires* that NO monsters have a name overlapping with these prefixes! */
 		while (TRUE)
@@ -3748,6 +3764,12 @@ char *in_buff;
 			else if (!strncmpi(bufp, "noequip ", l = 8)) {
 				noequip = TRUE;
 			}
+			else if (!strncmpi(bufp, "male ", l = 5)) {
+				makemale = TRUE;
+			}
+			else if (!strncmpi(bufp, "female ", l = 7)) {
+				makefemale = TRUE;
+			}
 			else
 				break;
 
@@ -3778,7 +3800,7 @@ char *in_buff;
 				else
 					q[-1] = ' ';
 			}
-			else if (!strncmpi(p, "vampire",	7))
+			else if (!strncmpi(p, "vampire_template",	16))
 				undeadtype = VAMPIRIC;
 			else if (!strncmpi(p, "pseudonatural",	13))
 				undeadtype = PSEUDONATURAL;
@@ -3861,7 +3883,7 @@ char *in_buff;
 				whichpm = mkclass(monclass, Inhell ? G_HELL : G_NOHELL);
 				goto createmon;	// skip past the section which needs whichpm to exist
 			}
-			if(!((whichpm = mkclass(monclass, G_NOHELL | G_HELL | G_PLANES))))
+			if(!((whichpm = mkclass(monclass, G_NOHELL | G_HELL | G_PLANES | G_DEPTHS))))
 			{
 				pline("You ask too generally for creatures so uncommon.");
 				continue;
@@ -3885,7 +3907,7 @@ char *in_buff;
 						(whichpm->mflagsg & mg_restrict) ||
 						(whichpm->geno & gen_restrict)) && i < 100)
 					{
-					if ((whichpm = mkclass(monclass, G_NOHELL | G_HELL | G_PLANES)))
+					if ((whichpm = mkclass(monclass, G_NOHELL | G_HELL | G_PLANES | G_DEPTHS)))
 						i++;
 					else
 						i = 100;
@@ -3917,7 +3939,7 @@ char *in_buff;
 createmon:
 		for (i = 0; i <= (allow_multi ? multi : 0); i++) {
 			if (monclass != MAXMCLASSES && !(ma_require || mg_restrict || gen_restrict))
-				whichpm = mkclass(monclass, G_NOHELL | G_HELL | G_PLANES);
+				whichpm = mkclass(monclass, G_NOHELL | G_HELL | G_PLANES | G_DEPTHS);
 
 			int mm_flags = NO_MM_FLAGS;
 			if (maketame)
@@ -3926,6 +3948,10 @@ createmon:
 				mm_flags |= MM_ESUM;
 			if (noequip)
 				mm_flags |= NO_MINVENT;
+			if (makemale)
+				mm_flags |= MM_MALE;
+			if (makefemale)
+				mm_flags |= MM_FEMALE;
 
 			mtmp = makemon_full(whichpm, x, y, mm_flags, undeadtype ? undeadtype : -1, -1);
 
@@ -3937,8 +3963,11 @@ createmon:
 				}
 				else if (makepeaceful)
 					mtmp->mpeaceful = 1;
-				else if (makehostile)
+				else if (makehostile){
 					mtmp->mpeaceful = 0;
+					if(Infuture)
+						set_faction(mtmp, ILSENSINE_FACTION);
+				}
 				set_malign(mtmp);
 
 				if (makesummoned)

@@ -133,15 +133,7 @@ register struct monst *mtmp;
 	for(otmp = mtmp->minvent; otmp; otmp = otmp->nobj)
 		if(otmp->otyp == AMULET_OF_YENDOR ||
 			is_quest_artifact(otmp) ||
-			otmp->oartifact == ART_SILVER_KEY ||
-			(otmp->oartifact >= ART_FIRST_KEY_OF_LAW && otmp->oartifact <= ART_THIRD_KEY_OF_NEUTRALITY) ||
-			otmp->oartifact == ART_PEN_OF_THE_VOID ||
-			otmp->oartifact == ART_ANNULUS ||
-			otmp->oartifact == ART_ILLITHID_STAFF ||
-			otmp->oartifact == ART_ELDER_CEREBRAL_FLUID ||
-			otmp->otyp == BELL_OF_OPENING ||
-			otmp->otyp == CANDELABRUM_OF_INVOCATION ||
-			otmp->otyp == SPE_BOOK_OF_THE_DEAD) return(1);
+			is_asc_obj(otmp)) return(1);
 	return(0);
 }
 
@@ -1037,7 +1029,7 @@ yellow_smite()
 			if (Antimagic)
 				dmg = (dmg + 1) / 2;
 			dmg = reduce_dmg(&youmonst,dmg,FALSE,TRUE);
-			You_hear("Menacing laughter as the world blurs around you...");
+			You_hear("menacing laughter as the world blurs around you...");
 			make_confused(HConfusion + dmg * 10, FALSE);
 			make_stunned(HStun + dmg, FALSE);
 			make_hallucinated(HHallucination + dmg * 15, FALSE, 0L);
@@ -1072,8 +1064,8 @@ yellow_smite()
 						dmg = d(8, 8);
 					}
 					else {
-						killer_format = KILLED_BY_AN;
-						killer = "touch of death";
+						killer_format = KILLED_BY;
+						killer = "the yellow death";
 						dmg = *hp(&youmonst);
 					}
 				}

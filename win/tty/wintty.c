@@ -389,7 +389,7 @@ tty_player_selection()
 	)) {
 	    int echoline;
 	    char *prompt = build_plselection_prompt(pbuf, QBUFSZ, flags.initrole,
-				flags.initrace, flags.initgend, flags.initalign);
+				flags.initrace, flags.descendant, flags.initgend, flags.initalign);
 
 	    tty_putstr(BASE_WINDOW, 0, "");
 	    echoline = wins[BASE_WINDOW]->cury;
@@ -420,7 +420,7 @@ give_up:	/* Quit */
 	}
 
 	(void)  root_plselection_prompt(plbuf, QBUFSZ - 1,
-			flags.initrole, flags.initrace, flags.initgend, flags.initalign);
+			flags.initrole, flags.initrace, flags.descendant, flags.initgend, flags.initalign);
 
 	/* Select a role, if necessary */
 	/* we'll try to be compatible with pre-selected race/gender/alignment,
@@ -489,7 +489,7 @@ give_up:	/* Quit */
 		free((genericptr_t) selected),	selected = 0;
 	    }
 	    (void)  root_plselection_prompt(plbuf, QBUFSZ - 1,
-			flags.initrole, flags.initrace, flags.initgend, flags.initalign);
+			flags.initrole, flags.initrace, flags.descendant, flags.initgend, flags.initalign);
 	}
 	
 	/* Select a race, if necessary */
@@ -536,7 +536,6 @@ give_up:	/* Quit */
 							flags.initalign)) {
 			    any.a_int = i+1;	/* must be non-zero */
 			    char selector = races[i].noun[0];
-			    if(!strcmp(races[i].noun,"etherealoid")) selector = 'E';	
 			    add_menu(win, NO_GLYPH, &any, selector,
 				0, ATR_NONE, races[i].noun, MENU_UNSELECTED);
 			}
@@ -562,9 +561,8 @@ give_up:	/* Quit */
 		flags.initrace = k;
 	    }
 	    (void)  root_plselection_prompt(plbuf, QBUFSZ - 1,
-			flags.initrole, flags.initrace, flags.initgend, flags.initalign);
+			flags.initrole, flags.initrace, flags.descendant, flags.initgend, flags.initalign);
 	}
-
 	/* Select a gender, if necessary */
 	/* force compatibility with role/race, try for compatibility with
 	 * pre-selected alignment */
@@ -634,7 +632,7 @@ give_up:	/* Quit */
 		flags.initgend = k;
 	    }
 	    (void)  root_plselection_prompt(plbuf, QBUFSZ - 1,
-			flags.initrole, flags.initrace, flags.initgend, flags.initalign);
+			flags.initrole, flags.initrace, flags.descendant, flags.initgend, flags.initalign);
 	}
 
 	/* Select an alignment, if necessary */
@@ -707,6 +705,117 @@ give_up:	/* Quit */
 		flags.initalign = k;
 	    }
 	}
+	/* Select a species, if necessary */
+	/* force compatibility with role/race/gender/align */
+	if (flags.initspecies < 0 || !validspecies(flags.initrole, flags.initrace,
+							flags.initgend, flags.initspecies)) {
+	    /* pre-selected species not valid */
+	    if (pick4u == 'y' || flags.initspecies == ROLE_RANDOM || flags.randomall
+		) {
+		flags.initspecies = pick_species(flags.initrole, flags.initrace,
+							flags.initgend, PICK_RANDOM);
+		if (flags.initspecies < 0) {
+		    tty_putstr(BASE_WINDOW, 0, "Incompatible species!");
+		    flags.initspecies = randspecies(flags.initrole, flags.initrace, flags.initgend);
+		}
+	    } else {	/* pick4u == 'n' */
+		/* Count the number of valid species */
+		n = 0;	/* number valid */
+		k = 0;	/* valid species */
+		for (i = 0; i < ROLE_SPECIES; i++) {
+		    if (validspecies(flags.initrole, flags.initrace, flags.initgend,
+							i)) {
+			n++;
+			k = i;
+		    }
+		}
+		if (n == 0) {
+		    for (i = 0; i < ROLE_SPECIES; i++) {
+			if (validspecies(flags.initrole, flags.initrace, flags.initgend, i)) {
+			    n++;
+			    k = i;
+			}
+		    }
+		}
+
+		/* Permit the user to pick, if there is more than one */
+		if (n > 1) {
+		    tty_clear_nhwindow(BASE_WINDOW);
+		    tty_putstr(BASE_WINDOW, 0, "Choosing Species");
+		    win = create_nhwindow(NHW_MENU);
+		    start_menu(win);
+		    any.a_void = 0;         /* zero out all bits */
+		    int valid_count = 0;
+		    for (i = 0; i < ROLE_SPECIES; i++)
+			if (validspecies(flags.initrole, flags.initrace,
+							flags.initgend, i)) {
+			    any.a_int = i+1;
+			    add_menu(win, NO_GLYPH, &any, 'a' + valid_count,
+				 0, ATR_NONE, species[i].name, MENU_UNSELECTED);
+			    valid_count++;
+			}
+		    any.a_int = pick_species(flags.initrole, flags.initrace,
+					    flags.initgend, PICK_RANDOM)+1;
+		    if (any.a_int == 0)	/* must be non-zero */
+			any.a_int = randspecies(flags.initrole, flags.initrace, flags.initgend)+1;
+		    add_menu(win, NO_GLYPH, &any , '*', 0, ATR_NONE,
+				    "Random", MENU_UNSELECTED);
+		    any.a_int = i+1;	/* must be non-zero */
+		    add_menu(win, NO_GLYPH, &any , 'q', 0, ATR_NONE,
+				    "Quit", MENU_UNSELECTED);
+		    Sprintf(pbuf, "Pick the species of your %s", plbuf);
+		    end_menu(win, pbuf);
+		    n = select_menu(win, PICK_ONE, &selected);
+		    destroy_nhwindow(win);
+		    if (n != 1 || selected[0].item.a_int == any.a_int)
+			goto give_up;		/* Selected quit */
+
+		    k = selected[0].item.a_int - 1;
+		    free((genericptr_t) selected),	selected = 0;
+		}
+		flags.initspecies = k;
+	    }
+	}
+
+	/* Select descendant status, if necessary */
+	if (flags.descendant < 0) {
+	    if (pick4u == 'y' || flags.descendant == ROLE_RANDOM || flags.randomall || flags.initrole < 0 || !validdescendant(flags.initrole)) {
+			flags.descendant = 0; // never randomly roll descendant
+	    } else {	/* pick4u == 'n' */
+		tty_clear_nhwindow(BASE_WINDOW);
+		tty_putstr(BASE_WINDOW, 0, "Choosing inheritance");
+		win = create_nhwindow(NHW_MENU);
+		start_menu(win);
+		any.a_void = 0;         /* zero out all bits */
+
+		any.a_int = 2;
+		add_menu(win, NO_GLYPH, &any , 'y', 0, ATR_NONE,
+			"Inherit from a past adventurer (start with an heirloom artifact but low stats and dangerous foes)", MENU_UNSELECTED);
+
+		any.a_int = 1;
+		add_menu(win, NO_GLYPH, &any , 'n', 0, ATR_NONE, "No past inheritance", MENU_UNSELECTED);
+
+		any.a_int = rn2(2)+1;
+		add_menu(win, NO_GLYPH, &any , '*', 0, ATR_NONE, "Random", MENU_UNSELECTED);
+
+		any.a_int = 4;
+		add_menu(win, NO_GLYPH, &any , 'q', 0, ATR_NONE, "Quit", MENU_UNSELECTED);
+
+		Sprintf(pbuf, "Pick the inheritance of your %s", plbuf);
+		end_menu(win, pbuf);
+		n = select_menu(win, PICK_ONE, &selected);
+		destroy_nhwindow(win);
+		if (n != 1 || selected[0].item.a_int == any.a_int)
+			goto give_up;		/* Selected quit */
+
+		k = selected[0].item.a_int - 1;
+		free((genericptr_t) selected),	selected = 0;
+		flags.descendant = k;
+	    }
+	    (void)  root_plselection_prompt(plbuf, QBUFSZ - 1,
+			flags.initrole, flags.initrace, flags.descendant, flags.initgend, flags.initalign);
+	}
+
 	/* Success! */
 	in_character_selection = FALSE;
 	tty_display_nhwindow(BASE_WINDOW, FALSE);
@@ -894,7 +1003,7 @@ tty_create_nhwindow(type)
 	newwin->maxcol = newwin->cols = 0;
 	break;
     case NHW_STATUS:
-	/* status window, 2 lines long, full width, bottom of screen */
+	/* status window, 3 lines long, full width, bottom of screen */
 	newwin->offx = 0;
 #if defined(USE_TILES) && defined(MSDOS)
 	if (iflags.grmode) {
@@ -902,7 +1011,7 @@ tty_create_nhwindow(type)
 	} else
 #endif
 	newwin->offy = min((int)ttyDisplay->rows-2, ROWNO+1);
-	newwin->rows = newwin->maxrow = 2;
+	newwin->rows = newwin->maxrow = 3;
 	newwin->cols = newwin->maxcol = min(ttyDisplay->cols, MAXCO);
 	break;
     case NHW_MAP:
@@ -991,7 +1100,7 @@ free_window_info(cw, free_data)
     int i;
 
     if (cw->data) {
-	if (cw == wins[WIN_MESSAGE] && cw->rows > cw->maxrow)
+	if (WIN_MESSAGE != WIN_ERR && cw == wins[WIN_MESSAGE] && cw->rows > cw->maxrow)
 	    cw->maxrow = cw->rows;		/* topl data */
 	for(i=0; i<cw->maxrow; i++)
 	    if(cw->data[i]) {
