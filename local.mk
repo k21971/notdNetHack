@@ -1,5 +1,5 @@
 GAMEDIR = /opt/nethack/chroot/notdnethack-2024.05.15
-CFLAGS = -g3 -O0 -fcommon -Wno-format-overflow
+CFLAGS = -g3 -O0 -Wno-format-overflow
 CPPFLAGS = -DWIZARD=\"build\" -DCOMPRESS=\"/bin/gzip\" -DCOMPRESS_EXTENSION=\".gz\"
 CPPFLAGS += -DHACKDIR=\"/notdnethack-2024.05.15\" -DDUMPMSGS=100
 CPPFLAGS += -DDUMP_FN=\"/dgldir/userdata/%N/%n/notdnethack/dumplog/%t.ndnh.txt\"
