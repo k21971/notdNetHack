@@ -764,9 +764,6 @@ int dx, dy;
 	if (nolimbs(youracedata) || slithy(youracedata)) {
 		You("have no legs to kick with.");
 		no_kick = TRUE;
-	} else if (verysmall(youracedata)) {
-		You("are too small to do any kicking.");
-		no_kick = TRUE;
 #ifdef STEED
 	} else if (u.usteed) {
 		if (!dx && !dy && yn_function("Kick your steed?", ynchars, 'y') == 'y') {
@@ -810,6 +807,7 @@ int dx, dy;
 		    case TT_WEB:
 		    case TT_BEARTRAP:
 		    case TT_LAVA:
+		    case TT_SALIVA:
 			You_cant("move your %s!", body_part(LEG));
 			break;
 		    default:
@@ -1132,7 +1130,7 @@ int dx, dy;
 					short frtype = treefruit->otyp;
 					int frtspe = treefruit->spe;
 					if(u.sealsActive&SEAL_EVE) nfruit *= 1.5L;
-					else if(uwep && uwep->oartifact==ART_PEN_OF_THE_VOID && uwep->ovar1_seals&SEAL_EVE) nfruit *= 1.2L;
+					else if(uwep && uwep->oartifact==ART_PEN_OF_THE_VOID && uwep->ovara_seals&SEAL_EVE) nfruit *= 1.2L;
 					treefruit->quan = nfruit;
 					if (is_plural(treefruit))
 					    pline("Some %s fall from the tree!", xname(treefruit));
@@ -1186,7 +1184,7 @@ int dx, dy;
 					short frtype = treefruit->otyp;
 					int frtspe = treefruit->spe;
 					if(u.sealsActive&SEAL_EVE) nfruit *= 1.5L;
-					else if(uwep && uwep->oartifact==ART_PEN_OF_THE_VOID && uwep->ovar1_seals&SEAL_EVE) nfruit *= 1.2L;
+					else if(uwep && uwep->oartifact==ART_PEN_OF_THE_VOID && uwep->ovara_seals&SEAL_EVE) nfruit *= 1.2L;
 					treefruit->quan = nfruit;
 					if (is_plural(treefruit))
 					    pline("Some %s fall from the tree!", xname(treefruit));
@@ -1570,6 +1568,8 @@ dumb:
 			else
 			    You_hear("someone yell:");
 			verbalize("Halt, thief!  You're under arrest!");
+			/*stealing is impure*/
+			IMPURITY_UP(u.uimp_theft)
 			(void) angry_guards(FALSE);
 			break;
 		    }
@@ -1742,6 +1742,8 @@ boolean yourfault;
 			    pline("%s is infuriated!", Monnam(shkp));
 			else pline("\"%s, you are a thief!\"", plname);
 		    } else  You_hear("a scream, \"Thief!\"");
+			/*stealing is impure*/
+			IMPURITY_UP(u.uimp_theft)
 		    hot_pursuit(shkp);
 		    (void) angry_guards(FALSE);
 		    return;

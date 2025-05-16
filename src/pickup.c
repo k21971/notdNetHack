@@ -18,8 +18,8 @@ STATIC_DCL boolean FDECL(query_classes, (char *,boolean *,boolean *,
 		const char *,struct obj *,BOOLEAN_P,int *));
 #endif
 STATIC_DCL void FDECL(check_here, (BOOLEAN_P));
-STATIC_DCL boolean FDECL(n_or_more, (struct obj *));
-STATIC_DCL boolean FDECL(all_but_uchain, (struct obj *));
+STATIC_DCL boolean FDECL(n_or_more, (struct obj *, int));
+STATIC_DCL boolean FDECL(all_but_uchain, (struct obj *, int));
 #if 0 /* not used */
 STATIC_DCL boolean FDECL(allow_cat_no_uchain, (struct obj *));
 #endif
@@ -46,6 +46,7 @@ STATIC_DCL char NDECL(pick_gemstone);
 STATIC_DCL char NDECL(pick_spearhead);
 STATIC_DCL char NDECL(pick_crystal);
 STATIC_DCL char NDECL(pick_bullet);
+STATIC_DCL char NDECL(pick_coin);
 STATIC_DCL struct obj * FDECL(pick_creatures_armor, (struct monst *, int *));
 STATIC_DCL struct obj * FDECL(pick_armor_for_creature, (struct monst *));
 
@@ -67,7 +68,7 @@ STATIC_DCL struct obj * FDECL(pick_armor_for_creature, (struct monst *));
 #define DELTA_CWT(cont,obj)		\
     ((cont)->cursed ? (obj)->owt * 2 :	\
 		      1 + ((obj)->owt / ((cont)->blessed ? 4 : 2)))
-#define GOLD_WT(n)		(((n) + 50L) / 100L)
+#define GOLD_WT(n)		(gold_weight(n))
 /* if you can figure this out, give yourself a hearty pat on the back... */
 #define GOLD_CAPACITY(w,n)	(((w) * -100L) - ((n) + 50L) - 1L)
 
@@ -296,9 +297,10 @@ static long val_for_n_or_more;
 
 /* query_objlist callback: return TRUE if obj's count is >= reference value */
 STATIC_OVL boolean
-n_or_more(obj)
-struct obj *obj;
+n_or_more(struct obj *obj, int qflags)
 {
+	if(qflags&NO_EQUIPMENT && obj->owornmask)
+		return FALSE;
     if (obj == uchain) return FALSE;
     return (obj->quan >= val_for_n_or_more);
 }
@@ -307,8 +309,7 @@ struct obj *obj;
 static char valid_menu_classes[MAXOCLASSES + 2];
 
 void
-add_valid_menu_class(c)
-int c;
+add_valid_menu_class(int c)
 {
 	static int vmc_count = 0;
 
@@ -321,25 +322,36 @@ int c;
 
 /* query_objlist callback: return TRUE if not uchain */
 STATIC_OVL boolean
-all_but_uchain(obj)
-struct obj *obj;
+all_but_uchain(struct obj *obj, int qflags)
 {
+	if(qflags&NO_EQUIPMENT && obj->owornmask)
+		return FALSE;
     return (obj != uchain);
 }
 
 /* query_objlist callback: return TRUE */
 /*ARGSUSED*/
 boolean
-allow_all(obj)
-struct obj *obj;
+allow_all_nomods(struct obj *obj)
 {
     return TRUE;
 }
 
+/* query_objlist callback: return TRUE */
+/*ARGSUSED*/
 boolean
-allow_category(obj)
-struct obj *obj;
+allow_all(struct obj *obj, int qflags)
 {
+	if(qflags&NO_EQUIPMENT && obj->owornmask)
+		return FALSE;
+    return TRUE;
+}
+
+boolean
+allow_category(struct obj *obj, int qflags)
+{
+	if(qflags&NO_EQUIPMENT && obj->owornmask)
+		return FALSE;
     if (Role_if(PM_PRIEST)) obj->bknown = TRUE;
     if (((index(valid_menu_classes,'u') != (char *)0) && obj->unpaid) ||
 	(index(valid_menu_classes, obj->oclass) != (char *)0))
@@ -363,9 +375,10 @@ struct obj *obj;
 #if 0 /* not used */
 /* query_objlist callback: return TRUE if valid category (class), no uchain */
 STATIC_OVL boolean
-allow_cat_no_uchain(obj)
-struct obj *obj;
+allow_cat_no_uchain(struct obj *obj, int qflags)
 {
+	if(qflags&NO_EQUIPMENT && obj->owornmask)
+		return FALSE;
     if ((obj != uchain) &&
 	(((index(valid_menu_classes,'u') != (char *)0) && obj->unpaid) ||
 	(index(valid_menu_classes, obj->oclass) != (char *)0)))
@@ -377,11 +390,10 @@ struct obj *obj;
 
 /* query_objlist callback: return TRUE if valid class and worn */
 boolean
-is_worn_by_type(otmp)
-register struct obj *otmp;
+is_worn_by_type(struct obj *otmp, int qflags)
 {
 	return((boolean)(!!(otmp->owornmask &
-			(W_ARMOR | W_RING | W_AMUL | W_TOOL | W_WEP | W_SWAPWEP | W_QUIVER)))
+			(W_ARMOR | W_RING | W_AMUL | W_BELT | W_TOOL | W_WEP | W_SWAPWEP | W_QUIVER)))
 	        && (index(valid_menu_classes, otmp->oclass) != (char *)0));
 }
 
@@ -465,7 +477,7 @@ int what;		/* should be a long */
 		traverse_how = BY_NEXTHERE;
 	} else {
 		objchain = u.ustuck->minvent;
-		traverse_how = 0;	/* nobj */
+		traverse_how = 0|NO_EQUIPMENT;	/* nobj */
 	}
 	/*
 	 * Start the actual pickup process.  This is split into two main
@@ -519,18 +531,28 @@ menu_pickup:
 	    selective = FALSE;		/* ask for each item */
 
 	    /* check for more than one object */
-	    for (obj = objchain;
-		  obj; obj = (traverse_how == BY_NEXTHERE) ? obj->nexthere : obj->nobj)
-		ct++;
+	    for (obj = objchain; obj;
+			obj = (traverse_how&BY_NEXTHERE) ? obj->nexthere : obj->nobj
+		 ){
+			if(traverse_how&NO_EQUIPMENT && obj->owornmask)
+				continue;
+			ct++;
+		}
 
 	    if (ct == 1 && count) {
 		/* if only one thing, then pick it */
 		obj = objchain;
 		lcount = min(obj->quan, (long)count);
 		n_tried++;
-		if (pickup_object(obj, lcount, FALSE) > 0)
-		    n_picked++;	/* picked something */
-		goto end_query;
+	    for (obj = objchain; obj;
+			obj = (traverse_how&BY_NEXTHERE) ? obj->nexthere : obj->nobj
+		 ){
+			if(traverse_how&NO_EQUIPMENT && obj->owornmask)
+				continue;
+			if (pickup_object(obj, lcount, FALSE) > 0)
+				n_picked++;	/* picked something */
+			goto end_query;
+		}
 
 	    } else if (ct >= 2) {
 		int via_menu = 0;
@@ -539,7 +561,7 @@ menu_pickup:
 		      (ct <= 10) ? "several" : "many");
 		if (!query_classes(oclasses, &selective, &all_of_a_type,
 				   "pick up", objchain,
-				   traverse_how == BY_NEXTHERE,
+				   !!(traverse_how&BY_NEXTHERE),
 #ifndef GOLDOBJ
 				   FALSE,
 #endif
@@ -555,11 +577,14 @@ menu_pickup:
 	    }
 
 	    for (obj = objchain; obj; obj = obj2) {
-		if (traverse_how == BY_NEXTHERE)
+		if (traverse_how&BY_NEXTHERE)
 			obj2 = obj->nexthere;	/* perhaps obj will be picked up */
 		else
 			obj2 = obj->nobj;
 		lcount = -1L;
+
+		if(traverse_how&NO_EQUIPMENT && obj->owornmask)
+			continue;
 
 		if (!selective && oclasses[0] && !index(oclasses,obj->oclass))
 		    continue;
@@ -729,7 +754,7 @@ struct obj *olist;		/* the list to pick from */
 int qflags;			/* options to control the query */
 menu_item **pick_list;		/* return list of items picked */
 int how;			/* type of query */
-boolean FDECL((*allow), (OBJ_P));/* allow function */
+boolean FDECL((*allow), (OBJ_P, int));/* allow function */
 {
 #ifdef SORTLOOT
 	int i, j;
@@ -749,7 +774,7 @@ boolean FDECL((*allow), (OBJ_P));/* allow function */
 
 	/* count the number of items allowed */
 	for (n = 0, last = 0, curr = olist; curr; curr = FOLLOW(curr, qflags))
-	    if ((*allow)(curr)) {
+	    if ((*allow)(curr, qflags)) {
 		last = curr;
 		n++;
 	    }
@@ -771,7 +796,7 @@ boolean FDECL((*allow), (OBJ_P));/* allow function */
 	/* Add objects to the array */
 	i = 0;
 	for (curr = olist; curr; curr = FOLLOW(curr, qflags)) {
-	  if ((*allow)(curr)) {
+	  if ((*allow)(curr, qflags)) {
 	    if (iflags.sortloot == 'f' ||
 		(iflags.sortloot == 'l' && !(qflags & USE_INVLET)))
 	      {
@@ -817,7 +842,7 @@ boolean FDECL((*allow), (OBJ_P));/* allow function */
 			return 0;
 		}
 		if ((!(qflags & INVORDER_SORT) || curr->oclass == *pack)
-							&& (*allow)(curr)) {
+							&& (*allow)(curr, qflags)) {
 
 		    /* if sorting, print type name (once only) */
 		    if (qflags & INVORDER_SORT && !printed_type_name) {
@@ -908,7 +933,7 @@ int how;			/* type of query */
 	if (ccount == 1 && !do_unpaid && num_buc_types <= 1 && !(qflags & BILLED_TYPES)) {
 	    for (curr = olist; curr; curr = FOLLOW(curr, qflags)) {
 		if ((qflags & WORN_TYPES) &&
-		    !(curr->owornmask & (W_ARMOR|W_RING|W_AMUL|W_TOOL|W_WEP|W_SWAPWEP|W_QUIVER)))
+		    !(curr->owornmask & (W_ARMOR|W_RING|W_AMUL|W_BELT|W_TOOL|W_WEP|W_SWAPWEP|W_QUIVER)))
 		    continue;
 		break;
 	    }
@@ -942,7 +967,7 @@ int how;			/* type of query */
 	    for (curr = olist; curr; curr = FOLLOW(curr, qflags)) {
 		if (curr->oclass == *pack) {
 		   if ((qflags & WORN_TYPES) &&
-		   		!(curr->owornmask & (W_ARMOR | W_RING | W_AMUL | W_TOOL |
+		   		!(curr->owornmask & (W_ARMOR | W_RING | W_AMUL | W_BELT | W_TOOL |
 		    	W_WEP | W_SWAPWEP | W_QUIVER)))
 			 continue;
 		   if (!collected_type_name) {
@@ -1042,7 +1067,7 @@ int qflags;
 	    for (curr = olist; curr; curr = FOLLOW(curr, qflags)) {
 		if (curr->oclass == *pack) {
 		   if ((qflags & WORN_TYPES) &&
-		    	!(curr->owornmask & (W_ARMOR | W_RING | W_AMUL | W_TOOL |
+		    	!(curr->owornmask & (W_ARMOR | W_RING | W_AMUL | W_BELT | W_TOOL |
 		    	W_WEP | W_SWAPWEP | W_QUIVER)))
 			 continue;
 		   if (!counted_category) {
@@ -1104,7 +1129,7 @@ int *wt_before, *wt_after;
     *wt_after  = wt;
 
     /* special case the iron ball here, it actually improves carrycap */
-    if (wt < 0 || obj->oartifact == ART_IRON_BALL_OF_LEVITATION)
+    if (wt < 0 || obj->oartifact == ART_IRON_BALL_OF_LEVITATION || (is_gold && Race_if(PM_LEPRECHAUN)))
 	return count;
 
     /* see how many we can lift */
@@ -1360,13 +1385,13 @@ boolean telekinesis;	/* not picking it up directly by hand */
 	    long iw = (long)max_capacity() - GOLD_WT(u.ugold);
 	    long gold_capacity = GOLD_CAPACITY(iw, u.ugold);
 
-	    if (gold_capacity <= 0L) {
+	    if (gold_capacity <= 0L && !Race_if(PM_LEPRECHAUN)) {
 		pline(
 	       "There %s %ld gold piece%s %s, but you cannot carry any more.",
 		      otense(obj, "are"),
 		      obj->quan, plur(obj->quan), where);
 		return 0;
-	    } else if (gold_capacity < count) {
+	    } else if (gold_capacity < count && !Race_if(PM_LEPRECHAUN)) {
 		You("can only %s %s of the %ld gold pieces lying %s.",
 		    telekinesis ? "acquire" : "carry",
 		    gold_capacity == 1L ? "one" : "some", obj->quan, where);
@@ -1468,7 +1493,7 @@ struct obj *
 pick_obj(otmp)
 struct obj *otmp;
 {
-	obj_extract_self(otmp);
+	obj_extract_and_unequip_self(otmp);
 	if (!u.uswallow && otmp != uball && costly_spot(otmp->ox, otmp->oy)) {
 	    char saveushops[5], fakeshop[2];
 
@@ -1555,6 +1580,7 @@ boolean countem;
 		if(Is_container(cobj) || 
 			is_gemable_lightsaber(cobj) ||
 			cobj->otyp == MASS_SHADOW_PISTOL || 
+			cobj->otyp == DEMON_CLAW ||
 			arti_socketed(cobj)
 		) {
 			container_count++;
@@ -1625,10 +1651,19 @@ boolean noit;
 	} else if(cobj->otyp == MASS_SHADOW_PISTOL){
 		You("carefully open %s...",the(xname(cobj)));
 		return use_massblaster(cobj);
+	} else if(cobj->otyp == DEMON_CLAW){
+		You("carefully reach into %s...",the(xname(cobj)));
+		return use_demon_claw(cobj);
 	}
     if (cobj->olocked) {
-	pline("Hmmm, %s seems to be locked.", noit ? the(xname(cobj)) : "it");
-	return MOVE_CANCELLED;
+		pline("Hmmm, %s seems to be locked.", noit ? the(xname(cobj)) : "it");
+		struct obj *unlocktool;
+		if (flags.autounlock && (unlocktool = autokey(TRUE)) != 0) {
+			if (cobj->otyp == BOX || cobj->otyp == CHEST) {
+				/* pass ox and oy to avoid direction prompt */
+				return (pick_lock(unlocktool, cobj->ox, cobj->oy, cobj) != 0);
+			}
+		} else { return MOVE_CANCELLED; }
     }
     if (cobj->otyp == BAG_OF_TRICKS) {
 	int tmp;
@@ -1685,7 +1720,11 @@ lootcont:
 		if (!able_to_loot(cc.x, cc.y, TRUE)) return MOVE_CANCELLED;
 
 		for (cobj = level.objects[cc.x][cc.y]; cobj; cobj = cobj->nexthere) {
-			if (Is_container(cobj) || cobj->otyp == MASS_SHADOW_PISTOL || is_gemable_lightsaber(cobj)) num_cont++;
+			if (Is_container(cobj)
+				|| cobj->otyp == MASS_SHADOW_PISTOL
+				|| is_gemable_lightsaber(cobj)
+				|| (cobj->otyp == DEMON_CLAW)
+			) num_cont++;
 		}
 
 		if (num_cont > 1) {
@@ -1704,8 +1743,9 @@ lootcont:
 
 			for (cobj = level.objects[cc.x][cc.y]; cobj; cobj = cobj->nexthere) {
 			if (Is_container(cobj) || 
-				cobj->otyp == MASS_SHADOW_PISTOL ||
-				is_gemable_lightsaber(cobj)
+				cobj->otyp == MASS_SHADOW_PISTOL
+				|| is_gemable_lightsaber(cobj)
+				|| (cobj->otyp == DEMON_CLAW)
 			) {
 				any.a_obj = cobj;
 				add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE, doname(cobj),
@@ -1742,8 +1782,14 @@ lootcont:
 					any = TRUE;
 
 					if (cobj->olocked) {
+						struct obj *unlocktool;
 						pline("Hmmm, it seems to be locked.");
-						continue;
+						if (flags.autounlock && (unlocktool = autokey(TRUE)) != 0) {
+							if (cobj->otyp == BOX || cobj->otyp == CHEST) {
+								/* pass ox and oy to avoid direction prompt */
+								return (pick_lock(unlocktool, cobj->ox, cobj->oy, cobj) != 0);
+							}
+						} else { continue; }
 					}
 					if (cobj->otyp == BAG_OF_TRICKS) {
 						int tmp;
@@ -1786,6 +1832,13 @@ lootcont:
 					if (c == 'q') return (timepassed==MOVE_CANCELLED ? MOVE_CANCELLED : (timepassed&~MOVE_CANCELLED));
 					if (c == 'n') continue;
 					timepassed |= use_massblaster(cobj);
+					if(timepassed & MOVE_STANDARD) underfoot = TRUE;
+				} else if(cobj->otyp == DEMON_CLAW){
+					Sprintf(qbuf, "There is %s here, exchange coin?",an(xname(cobj)));
+					c = ynq(qbuf);
+					if (c == 'q') return (timepassed==MOVE_CANCELLED ? MOVE_CANCELLED : (timepassed&~MOVE_CANCELLED));
+					if (c == 'n') continue;
+					timepassed |= use_demon_claw(cobj);
 					if(timepassed & MOVE_STANDARD) underfoot = TRUE;
 				}
 			}
@@ -1991,8 +2044,7 @@ boolean *prev_loot;
 		otmp = hold_another_object(otmp, "You drop %s!", doname(otmp),
 					(const char *)0);
 		timepassed = rnd(3) +  objects[otmp->otyp].oc_delay;
-		mtmp->mcanmove = FALSE;
-		mtmp->mfrozen = timepassed;
+		mtmp->mequipping = timepassed;
 		if (prev_loot) *prev_loot = TRUE;
 	} else {
 		return MOVE_CANCELLED;
@@ -2076,6 +2128,8 @@ dopetequip()
 			flag = W_ARM;
 		} else if(is_worn_tool(otmp)){
 			flag = W_TOOL;
+		} else if(is_belt(otmp)){
+			flag = W_BELT;
 		} else {
 			pline("Error: Unknown monster armor type!?");
 			return MOVE_CANCELLED;
@@ -2109,8 +2163,7 @@ dopetequip()
 		}
 		timepassed = rnd(3) +  objects[otmp->otyp].oc_delay;
 		if(unseen) timepassed += d(3,4);
-		mtmp->mcanmove = FALSE;
-		mtmp->mfrozen = timepassed;
+		mtmp->mequipping = timepassed;
 	} else {
 		return MOVE_CANCELLED;
 	}
@@ -2205,7 +2258,7 @@ register struct obj *obj;
 	) {
 		pline("The artifact isn't interested in taking %s.", the(xname(obj)));
 		return 0;
-	} else if (obj->owornmask & (W_ARMOR | W_RING | W_AMUL | W_TOOL)) {
+	} else if (obj->owornmask & (W_ARMOR | W_RING | W_AMUL | W_BELT | W_TOOL)) {
 		Norep("You cannot %s %s you are wearing.",
 			Icebox ? "refrigerate" : "stash", something);
 		return 0;
@@ -2400,19 +2453,19 @@ register struct obj *obj;
 	}
 
 	if(obj->oartifact && !touch_artifact(obj, &youmonst, FALSE)) return 0;
-	// if(obj->oartifact && obj->oartifact == ART_PEN_OF_THE_VOID && !Role_if(PM_EXILE)) u.sealsKnown |= obj->ovar1_seals;
+	// if(obj->oartifact && obj->oartifact == ART_PEN_OF_THE_VOID && !Role_if(PM_EXILE)) u.sealsKnown |= obj->ovara_seals;
 	/*Handle the pen of the void here*/
 	if(obj && obj->oartifact == ART_PEN_OF_THE_VOID){
-		if(obj->ovar1_seals && !Role_if(PM_EXILE)){
+		if(obj->ovara_seals && !Role_if(PM_EXILE)){
 			long oldseals = u.sealsKnown;
-			u.sealsKnown |= obj->ovar1_seals;
+			u.sealsKnown |= obj->ovara_seals;
 			if(oldseals != u.sealsKnown) You("learned new seals.");
 		}
-		obj->ovar1_seals = u.spiritTineA|u.spiritTineB;
+		obj->ovara_seals = u.spiritTineA|u.spiritTineB;
 		if(u.voidChime){
 			int i;
 			for(i=0; i<u.sealCounts; i++){
-				obj->ovar1_seals |= u.spirit[i];
+				obj->ovara_seals |= u.spirit[i];
 			}
 		}
 	}
@@ -2962,8 +3015,18 @@ boolean past;
 				expert_weapon_skill(P_TRIDENT);
 				u.utats |= TAT_SPEARHEAD;
 		break;
-		case PM_HUMAN:
 		case PM_VAMPIRE:
+			if(flags.initgend){
+				skilled_weapon_skill(P_LONG_SWORD);
+				free_skill_up(P_LONG_SWORD);
+			}
+			else {
+				expert_weapon_skill(P_SABER);
+				skilled_weapon_skill(P_FIREARM);
+				free_skill_up(P_SABER);
+			}
+		break;
+		case PM_HUMAN:
 		case PM_INCANTIFIER:
 			if(flags.initgend){
 				expert_weapon_skill(P_DAGGER);
@@ -2973,6 +3036,7 @@ boolean past;
 				skilled_weapon_skill(P_TWO_WEAPON_COMBAT);
 			}
 			else {
+				//Note: dagger and two weapon default to skilled
 				expert_weapon_skill(P_SABER);
 				free_skill_up(P_SABER);
 			}
@@ -3122,7 +3186,7 @@ boolean past;
 			expert_weapon_skill(P_TWO_WEAPON_COMBAT);
 		break;
 	}
-	if(u.uinsight >= 10){
+	if(Insight >= 10){
 		open_crazy_box(box, past);
 		box->spe = 0;
 		return TRUE;
@@ -3288,6 +3352,48 @@ pick_bullet()
 	return 0;
 }
 
+
+STATIC_OVL
+char
+pick_coin()
+{
+	winid tmpwin;
+	int n=0, how,count=0;
+	char buf[BUFSZ];
+	struct obj *otmp;
+	menu_item *selected;
+	anything any;
+
+	tmpwin = create_nhwindow(NHW_MENU);
+	start_menu(tmpwin);
+	any.a_void = 0;		/* zero out all bits */
+	
+	Sprintf(buf, "Coins");
+	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_BOLD, buf, MENU_UNSELECTED);
+	for(otmp = invent; otmp; otmp = otmp->nobj){
+		if(otmp->otyp >= WAGE_OF_SLOTH && otmp->otyp <= WAGE_OF_PRIDE){
+			Sprintf1(buf, doname(otmp));
+			any.a_char = otmp->invlet;	/* must be non-zero */
+			add_menu(tmpwin, NO_GLYPH, &any,
+				otmp->invlet, 0, ATR_NONE, buf,
+				MENU_UNSELECTED);
+			count++;
+		}
+	}
+	end_menu(tmpwin, "Choose new coin:");
+
+	how = PICK_ONE;
+	if(count) n = select_menu(tmpwin, how, &selected);
+	else You("don't have any suitable coins.");
+	destroy_nhwindow(tmpwin);
+	if(n > 0){
+		char picked = selected[0].item.a_char;
+		free(selected);
+		return picked;
+	}
+	return 0;
+}
+
 STATIC_OVL
 struct obj *
 pick_creatures_armor(mon, passed_info)
@@ -3365,7 +3471,7 @@ struct monst *mon;
 	
 	Sprintf(buf, "Equipment");
 	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_BOLD, buf, MENU_UNSELECTED);
-	if(!(is_whirly(mon->data) || noncorporeal(mon->data))) for(otmp = invent; otmp; otmp = otmp->nobj){
+	if(!(is_gaseous_noequip(mon->data) || noncorporeal(mon->data))) for(otmp = invent; otmp; otmp = otmp->nobj){
 		if(!otmp->owornmask){
 			if(otmp->oclass == AMULET_CLASS && !(mon->misc_worn_check&W_AMUL) &&
 				can_wear_amulet(mon->data) && 
@@ -3388,6 +3494,8 @@ struct monst *mon;
 			} else if(is_suit(otmp) && !(mon->misc_worn_check&W_ARM) && arm_match(mon->data, otmp) && arm_size_fits(mon->data, otmp)){
 				addArmorMenuOption
 			} else if(is_worn_tool(otmp) && !(mon->misc_worn_check&W_TOOL) && can_wear_blindf(mon->data)){
+				addArmorMenuOption
+			} else if(is_belt(otmp) && !(mon->misc_worn_check&W_BELT) && can_wear_belt(mon->data)){
 				addArmorMenuOption
 			}
 		}
@@ -3534,13 +3642,39 @@ register struct obj *obj;
 	}
 	if(otmp){
 		current_container = obj;
-		if(otmp->quan > 1)
-			otmp = splitobj(otmp, 1);
 		if(obj->cobj) 
 			out_container(obj->cobj);
+		if(otmp->quan > 1)
+			otmp = splitobj(otmp, 1);
 		if(!obj->cobj)
 			in_container(otmp);
 		return MOVE_STANDARD;
+	} else return MOVE_CANCELLED;
+}
+
+int
+use_demon_claw(obj)
+register struct obj *obj;
+{
+	struct obj *otmp;
+	char coin;
+	coin = pick_coin();
+	
+	if(!coin)
+		return MOVE_CANCELLED;
+	
+	for (otmp = invent; otmp; otmp = otmp->nobj) {
+		if(otmp->invlet == coin) break;
+	}
+	if(otmp){
+		current_container = obj;
+		if(obj->cobj) 
+			out_container(obj->cobj);
+		if(otmp->quan > 1)
+			otmp = splitobj(otmp, 1);
+		if(!obj->cobj)
+			in_container(otmp);
+		return MOVE_PARTIAL;
 	} else return MOVE_CANCELLED;
 }
 
@@ -3581,7 +3715,7 @@ register int held;
 		nomul(-1, "opening a container");
 		nomovemsg = "";
 	    }
-	    return MOVE_STANDARD;
+	    return MOVE_CONTAINER;
 	}
 	current_container = obj;	/* for use by in/out_container */
 	if(Is_real_container(obj)){
@@ -3591,24 +3725,24 @@ register int held;
 			quantum_cat = TRUE;	/* for adjusting "it's empty" message */
 		} else if(obj->spe == 4){
 			open_coffin(obj, FALSE); //FALSE: the box was not destroyed. Use present tense.
-			return MOVE_STANDARD;
+			return MOVE_CONTAINER;
 		} else if(obj->spe == 5){
 			open_sarcophagus(obj, FALSE); //FALSE: the box was not destroyed. Use present tense.
-			return MOVE_STANDARD;
-		} else if(obj->spe == 6 && u.uinsight >= 10){
+			return MOVE_CONTAINER;
+		} else if(obj->spe == 6 && Insight >= 10){
 			open_crazy_box(obj, FALSE); //FALSE: the box was not destroyed. Use present tense.
-			return MOVE_STANDARD;
+			return MOVE_CONTAINER;
 		} else if(obj->spe == 7){
 			// Madman reclaims their stuff. Contents handled by the level loader.
 			//FALSE: the box was not destroyed. Use present tense.
 			if(open_madstuff_box(obj, FALSE)){
-				return MOVE_STANDARD;
+				return MOVE_CONTAINER;
 			}
 		} else if(obj->spe == 8){
 			// Nothing. Fulvous desk spawns monsters.
 		} else if(obj->spe == 9){
 			open_giants_sack(obj, FALSE); //FALSE: not destroyed
-			return MOVE_STANDARD;
+			return MOVE_CONTAINER;
 		}
 	}
 	/* Count the number of contained objects. Sometimes toss objects if a cursed magic bag. */
@@ -3653,7 +3787,7 @@ register int held;
 				if (!outokay && !inokay) {
 					pline("%s", emptymsg);
 					You("don't have anything to put in.");
-					return used ? MOVE_STANDARD : MOVE_CANCELLED;
+					return used ? MOVE_CONTAINER : MOVE_CANCELLED;
 				}
 				menuprompt[0] = '\0';
 				if (!cnt) Sprintf(menuprompt, "%s ", emptymsg);
@@ -3670,7 +3804,7 @@ register int held;
 				tipcontainer(current_container);
 				if(current_container->oartifact == ART_ESSCOOAHLIPBOOURRR)
 					current_container->age = monstermoves + rnz(100);
-				used |= MOVE_STANDARD;
+				used |= MOVE_CONTAINER;
 			}
 			if (loot_out) {
 				int sub_used;
@@ -3718,7 +3852,7 @@ ask_again2:
 		    break;
 		case 'q':
 		default:
-		    return used ? MOVE_STANDARD : MOVE_CANCELLED;
+		    return used ? MOVE_CONTAINER : MOVE_CANCELLED;
 		}
 	    }
 	} else {
@@ -3733,7 +3867,7 @@ ask_again2:
 	{
 	    /* nothing to put in, but some feedback is necessary */
 	    You("don't have anything to put in.");
-	    return used ? MOVE_STANDARD : MOVE_CANCELLED;
+	    return used ? MOVE_CONTAINER : MOVE_CANCELLED;
 	}
 	if (flags.menu_style != MENU_FULL) {
 	    Sprintf(qbuf, "Do you wish to put %s in?", something);
@@ -3753,7 +3887,7 @@ ask_again2:
 		    break;
 		case 'q':
 		default:
-		    return used ? MOVE_STANDARD : MOVE_CANCELLED;
+		    return used ? MOVE_CONTAINER : MOVE_CANCELLED;
 	    }
 	}
 	/*
@@ -3808,7 +3942,7 @@ ask_again2:
 	    dealloc_obj(u_gold);
 	}
 #endif
-	return used ? MOVE_STANDARD : MOVE_CANCELLED;
+	return used ? MOVE_CONTAINER : MOVE_CANCELLED;
 }
 
 /* Loot a container (take things out, put things in), using a menu. */
@@ -4312,7 +4446,7 @@ struct obj *box; /* or bag */
 			pline("%ssarcophagus is now empty.", Shk_Your(yourbuf, box));
 		else
 			empty_it = TRUE;
-	} else if(Is_real_container(box) && box->spe == 6 && u.uinsight >= 10){
+	} else if(Is_real_container(box) && box->spe == 6 && Insight >= 10){
 		open_crazy_box(box, TRUE);
 
 		if (!Has_contents(box))
@@ -4395,7 +4529,7 @@ struct obj *box; /* or bag */
 				hitfloor2(&youmonst, &otmp, (struct obj *)0, FALSE, FALSE);
 			} else {
 				if (altarizing) {
-					doaltarobj(otmp);
+					doaltarobj(otmp, god_at_altar(ox, oy));
 				} else if (!terse) {
 					pline("%s %s to the %s.", Doname2(otmp),
 						  otense(otmp, "drop"), surface(ox, oy));

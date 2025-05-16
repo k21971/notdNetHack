@@ -456,7 +456,7 @@ do_mname()
 
 static NEARDATA const char callable[] = {
 	SCROLL_CLASS, TILE_CLASS, POTION_CLASS, WAND_CLASS, RING_CLASS, AMULET_CLASS,
-	GEM_CLASS, SPBOOK_CLASS, ARMOR_CLASS, TOOL_CLASS, 0 };
+	GEM_CLASS, SPBOOK_CLASS, ARMOR_CLASS, BELT_CLASS, TOOL_CLASS, 0 };
 
 boolean
 objtyp_is_callable(i)
@@ -616,7 +616,7 @@ const char *name;
 	
     if(!strcmp((&artilist[ART_SCALPEL_OF_LIFE_AND_DEATH])->name,name) &&
        obj && obj->otyp == SCALPEL){
-      obj->ovar1_lifeDeath = COMMAND_DEATH;
+      obj->ovara_lifeDeath = COMMAND_DEATH;
     }
     if(((!strcmp((&artilist[ART_FIGURINE_OF_GALATEA])->name,name)) || (!strcmp((&artilist[ART_FIGURINE_OF_PYGMALION])->name,name))) &&
        obj && obj->otyp == FIGURINE){
@@ -809,7 +809,7 @@ const char *name;
 	    if (obj == uswapwep) untwoweapon();
 	    /* activate warning if you've just named your weapon "Sting" */
 	    if (obj == uwep) set_artifact_intrinsic(obj, TRUE, W_WEP);
-	    if (obj == uwep && obj->oartifact == ART_KUSANAGI_NO_TSURUGI){
+	    if (obj == uwep && obj->oartifact == ART_KUSANAGI_NO_TSURUGI && !(u.ulevel >= 22 || u.uhave.amulet)){
 	    	setuwep((struct obj *) 0);
 	    	pline("You are not yet worthy of wielding this sword, but you may bear it until you are ready.");
 	    }
@@ -826,6 +826,7 @@ const char *name;
 		}
 	}
 	if (carried(obj)) update_inventory();
+	fix_object(obj);
 	return obj;
 }
 
@@ -992,6 +993,7 @@ boolean full;
 		else if (full && template == SKELIFIED) 		Sprintf(buf2, "%s's skeleton", buf);
 		else if (full && template == CRYSTALFIED)		Sprintf(buf2, "%s's vitrean", buf);
 		else if (full && template == WHISPERING)		Sprintf(buf2, "%s's whispers", buf);
+		else if (full && template == YGGDRASIL)		Sprintf(buf2, "%s's yggdrasil", buf);
 		else if (full && template == MINDLESS) 			Sprintf(buf2, "%s's husk", buf);
 		else if (full && template == FRACTURED)			Sprintf(buf2, "%s the Witness of the Fracture", buf);
 		else if (full && template == ILLUMINATED)		Sprintf(buf2, "%s the Illuminated", buf);
@@ -1013,6 +1015,8 @@ boolean full;
 		else if (full && template == CORDYCEPS)			Sprintf(buf2, "%s's sporulating corpse", buf);
 		else if (full && template == PSURLON)			Sprintf(buf2, "%s the finger", buf);
 		else if (full && template == CONSTELLATION)		Sprintf(buf2, "%s constellation", buf);
+		else if (full && template == SWOLLEN_TEMPLATE)	Sprintf(buf2, "%s the swollen", buf);
+		else if (full && template == BLOOD_MON)	Sprintf(buf2, "%s the bloody", buf);
 		else											Strcpy(buf2, buf);
 	}
 	else {
@@ -1020,6 +1024,7 @@ boolean full;
 		else if (full && template == SKELIFIED)			Sprintf(buf2, "%s skeleton", buf);
 		else if (full && template == CRYSTALFIED)		Sprintf(buf2, "%s vitrean", buf);
 		else if (full && template == WHISPERING)		Sprintf(buf2, "%s whispers", buf);
+		else if (full && template == YGGDRASIL)		Sprintf(buf2, "%s yggdrasil", buf);
 		else if (full && template == MINDLESS)			Sprintf(buf2, "%s husk", buf);
 		else if (full && template == FRACTURED)			Sprintf(buf2, "fractured %s", buf);
 		else if (full && template == ILLUMINATED)		Sprintf(buf2, "illuminated %s", buf);
@@ -1045,6 +1050,8 @@ boolean full;
 		else if (full && template == CORDYCEPS)			Sprintf(buf2, "%s cordyceps", buf);
 		else if (full && template == PSURLON)			Sprintf(buf2, "%s finger", buf);
 		else if (full && template == CONSTELLATION)		Sprintf(buf2, "%s constellation", buf);
+		else if (full && template == SWOLLEN_TEMPLATE)	Sprintf(buf2, "swollen %s", buf);
+		else if (full && template == BLOOD_MON)	Sprintf(buf2, "blood %s", buf);
 		else											Strcpy(buf2, buf);
 	}
 
@@ -1245,8 +1252,13 @@ boolean called;
 	/* Put the adjectives in the buffer */
 	if (adjective)
 	    Strcat(strcat(buf, adjective), " ");
-	if (get_mx(mtmp, MX_ESUM))
-		Strcat(buf, "summoned ");
+	if (get_mx(mtmp, MX_ESUM)){
+		if(has_template(mtmp, SPARK_SKELETON)){
+			Strcat(buf, "reanimated ");
+		}
+		else
+			Strcat(buf, "summoned ");
+	}
 	if (do_invis)
 	    Strcat(buf, "invisible ");
 #ifdef STEED
@@ -1700,65 +1712,6 @@ struct monst *other_mon;
 	if (mon == &youmonst)
 		return "you";
 	return mon_nam(mon);
-}
-
-const char * 
-get_ent_species(species)
-int species;
-{
-	switch(species){
-		case ENT_ASH:
-			return "ash";
-		case ENT_BEECH:
-			return "beech";
-		case ENT_BIRCH:
-			return "birch";
-		case ENT_BLUEGUM:
-			return "bluegum";
-		case ENT_CEDAR:
-			return "cedar";
-		case ENT_CHESTNUT:
-			return "chestnut";
-		case ENT_CYPRESS:
-			return "cypress";
-		case ENT_DOGWOOD:
-			return "dogwood";
-		case ENT_ELDER:
-			return "elder";
-		case ENT_ELM:
-			return "elm";
-		case ENT_FIR:
-			return "fir";
-		case ENT_GINKGO:
-			return "gingko";
-		case ENT_LARCH:
-			return "larch";
-		case ENT_LOCUST:
-			return "locust";
-		case ENT_MAGNOLIA:
-			return "magnolia";
-		case ENT_MAPLE:
-			return "maple";
-		case ENT_MIMOSA:
-			return "mimosa";
-		case ENT_METHUSELAH:
-			return "methuselah";
-		case ENT_OAK:
-			return "oak";
-		case ENT_POPLAR:
-			return "poplar";
-		case ENT_REDWOOD:
-			return "redwood";
-		case ENT_SPRUCE:
-			return "spruce";
-		case ENT_WILLOW:
-			return "willow";
-		case ENT_YEW:
-			return "yew";
-		default:
-			return "strange";
-	}
-
 }
 
 char *
