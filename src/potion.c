@@ -164,15 +164,39 @@ int type;
 	long old = Sick;
 
 	if (xtime > 0L) {
+		struct obj *uarmor[] = ARMOR_SLOTS;
 	    if (Sick_resistance) return;
 		IMPURITY_UP(u.uimp_illness)
+		int silverarmor_count = 0;
+		for(int i = 0; i < SIZE(uarmor); i++) {
+			if(uarmor[i] && is_silverknight_armor(uarmor[i])){
+				silverarmor_count++;
+				if(i == 0){ //body armor is best
+					silverarmor_count++; 
+				}
+			}
+		}
+		if(uwep && uwep->otyp == SILVERKNIGHT_SPEAR)
+			silverarmor_count += 3;
+		if(uswapwep && uswapwep->otyp == SILVERKNIGHT_SPEAR)
+			silverarmor_count += 2;
+
 	    if (!old) {
-		/* newly sick */
-		if(talk) You_feel("deathly sick.");
+			/* newly sick */
+			if(talk) You_feel("deathly sick.");
+			if(silverarmor_count > 0)
+				xtime += xtime * silverarmor_count / 10;
+			if(youracedata->mtyp == PM_SILVERKNIGHT)
+				xtime *= 2;
 	    } else {
 		/* already sick */
-		if (talk) You_feel("%s worse.",
-			      xtime <= Sick/2L ? "much" : "even");
+			if(silverarmor_count > 0){
+				xtime += xtime * silverarmor_count / 10;
+				if(xtime > old-1)
+					xtime = max(1, old-1);
+			}
+			if (talk) You_feel("%s worse.",
+					xtime <= Sick/2L ? "much" : "even");
 	    }
 	    set_itimeout(&Sick, xtime);
 	    u.usick_type |= type;
@@ -387,10 +411,19 @@ dodrink()
 {
 	register struct obj *otmp;
 	const char *potion_descr;
+	boolean booze_only = FALSE;
 
-	if (Strangled) {
-		pline("If you can't breathe air, how can you drink liquid?");
+	if(nomouth(youracedata->mtyp)) {
+		pline("You have no mouth to drink with!");
 		return MOVE_INSTANT;
+	}
+
+	if (Strangled && !separate_respiration(youracedata)) {
+		if(youmonst.mgmld_throat < 400){
+			pline("If you can't breathe air, how can you drink liquid?");
+			return MOVE_INSTANT;
+		}
+		booze_only = TRUE;
 	}
 	
 	if (uarmh && FacelessHelm(uarmh) && ((uarmh->cursed && !Weldproof) || !freehand())){
@@ -404,7 +437,7 @@ dodrink()
 		return MOVE_INSTANT;
 	}
 	/* Is there a fountain to drink from here? */
-	if (IS_FOUNTAIN(levl[u.ux][u.uy].typ) && !Levitation) {
+	if (IS_FOUNTAIN(levl[u.ux][u.uy].typ) && !Levitation && !booze_only) {
 		if(yn("Drink from the fountain?") == 'y') {
 			drinkfountain();
 			return MOVE_QUAFFED;
@@ -412,7 +445,7 @@ dodrink()
 	}
 #ifdef SINKS
 	/* Or a kitchen sink? */
-	if (IS_SINK(levl[u.ux][u.uy].typ)) {
+	if (IS_SINK(levl[u.ux][u.uy].typ) && !booze_only) {
 		if (yn("Drink from the sink?") == 'y') {
 			drinksink();
 			return MOVE_QUAFFED;
@@ -424,6 +457,7 @@ dodrink()
     if (IS_FORGE(levl[u.ux][u.uy].typ)
         /* not as low as floor level but similar restrictions apply */
         && can_reach_floor()
+		&& !booze_only
 	) {
         if (yesno("Drink from the forge?", TRUE) == 'y') {
             drinkforge();
@@ -447,6 +481,10 @@ dodrink()
 
 	otmp = getobj(beverages, "drink");
 	if(!otmp) return MOVE_CANCELLED;
+	if(booze_only && !((otmp->otyp == POT_BOOZE || otmp->otyp == POT_ACID) && objects[otmp->otyp].oc_name_known && otmp->dknown)){
+		pline("If you can't breathe air, how can you drink liquid?");
+		return MOVE_INSTANT;
+	}
 	if(otmp->ostolen){
 		if(u.sealsActive&SEAL_ANDROMALIUS)
 			unbind(SEAL_ANDROMALIUS, TRUE);
@@ -758,6 +796,9 @@ boolean force;
 	break;
 	case POT_BOOZE:
 		unkn++;
+		if(Strangled && !separate_respiration(youracedata)){
+			pline("The liquid almost pours out of your mouth, but you feel the obstruction in your throat suddenly ease!");
+		}
 		if(uclockwork){ /* Note: Does not include Androids */
 			pline("It would seem you just drank a bottle of industrial solvent.");
 			if(u.sealsActive&SEAL_ENKI && u.uhp < u.uhpmax){
@@ -798,6 +839,31 @@ boolean force;
 			if (!otmp->odiluted) healup(u.ulevel, 0, FALSE, FALSE);
 			if(!Race_if(PM_INCANTIFIER) && !umechanoid && !Race_if(PM_ETHEREALOID)) u.uhunger += 130 + 10 * (2 + bcsign(otmp));
 			newuhs(FALSE);
+		}
+		//Booze kills gray mold
+		if(youmonst.mgmld_throat){
+			if(!separate_respiration(youracedata)){
+				//Direct exposure kills all mold spores
+				youmonst.mgmld_throat = 0;
+			}
+			else {
+				//The drunker you get, the more mold dies.
+				if(otmp->blessed)
+					youmonst.mgmld_throat = max(0, youmonst.mgmld_throat - 50);
+				else if(otmp->cursed)
+					youmonst.mgmld_throat = 0;
+				else 
+					youmonst.mgmld_throat = max(0, youmonst.mgmld_throat - 100);
+			}
+		}
+		if(youmonst.mgmld_skin){
+			//The drunker you get, the more mold dies.
+			if(otmp->blessed)
+				youmonst.mgmld_skin = max(0, youmonst.mgmld_skin - 50);
+			else if(otmp->cursed)
+				youmonst.mgmld_skin = 0;
+			else 
+				youmonst.mgmld_skin = max(0, youmonst.mgmld_skin - 100);
 		}
 		if (!umechanoid && !Race_if(PM_ETHEREALOID)){
 			if(u.uhunger > get_uhungermax()){
@@ -1115,6 +1181,14 @@ boolean force;
 		       !(get_ox(otmp, OX_ESUM)) * ((enhanced ? 2 : 1) * (!otmp->cursed ? 1 : 0)),
 			   otmp->blessed, !otmp->cursed);
 		exercise(A_CON, TRUE);
+		//Healing makes mold worse
+		if(!separate_respiration(youracedata) && youmonst.mgmld_throat){
+			You("feel the obstruction in your throat grow larger.");
+			youmonst.mgmld_throat += 10;
+		}
+		if(youmonst.mgmld_skin){
+			youmonst.mgmld_skin += 10;
+		}
 		break;
 	case POT_EXTRA_HEALING:
 as_extra_healing:
@@ -1126,6 +1200,14 @@ as_extra_healing:
 		(void) make_hallucinated(0L,TRUE,0L);
 		exercise(A_CON, TRUE);
 		exercise(A_STR, TRUE);
+		//Healing makes mold worse
+		if(!separate_respiration(youracedata) && youmonst.mgmld_throat){
+			You("feel the obstruction in your throat grow much larger.");
+			youmonst.mgmld_throat += 100;
+		}
+		if(youmonst.mgmld_skin){
+			youmonst.mgmld_skin += 100;
+		}
 		break;
 	case POT_FULL_HEALING:
 		You_feel("completely healed.");
@@ -1158,6 +1240,14 @@ as_extra_healing:
 		(void) make_hallucinated(0L,TRUE,0L);
 		exercise(A_STR, TRUE);
 		exercise(A_CON, TRUE);
+		//Healing makes mold worse
+		if(!separate_respiration(youracedata) && youmonst.mgmld_throat){
+			You("feel the obstruction in your throat grow alarmingly large.");
+			youmonst.mgmld_throat += 200;
+		}
+		if(youmonst.mgmld_skin){
+			youmonst.mgmld_skin += 1000;
+		}
 		break;
 	case POT_GOAT_S_MILK:
         enhanced = uarmg && uarmg->oartifact == ART_GAUNTLETS_OF_THE_HEALING_H;
@@ -1332,7 +1422,7 @@ as_extra_healing:
 				good_for_you = TRUE;
 			    } else {
 				You("burn your %s.", body_part(FACE));
-				if(!(HFire_resistance || u.sealsActive&SEAL_FAFNIR)) losehp(d(Fire_resistance ? 1 : 3, 4),
+				if(!(HFire_resistance || u.sealsActive&SEAL_MAEGERA)) losehp(d(Fire_resistance ? 1 : 3, 4),
 				       "burning potion of oil", KILLED_BY_AN);
 			    }
 			} else if(otmp->cursed){
@@ -1366,6 +1456,9 @@ as_extra_healing:
 			exercise(A_CON, FALSE);
 		}
 		if (Stoned || Golded || Salted) fix_petrification();
+		//Acid kills gray mold
+		youmonst.mgmld_throat = 0;
+		youmonst.mgmld_skin = 0;
 		unkn++; /* holy/unholy water can burn like acid too */
 		break;
 	case POT_PRIMORDIAL_WATERS:{
@@ -1380,7 +1473,8 @@ as_extra_healing:
 			exercise(A_CON, FALSE);
 		}
 		if (Stoned || Golded || Salted) fix_petrification();
-
+		youmonst.mgmld_throat = 0;
+		youmonst.mgmld_skin = 0;
 		int num;
 		num = rnd(5) + 5 * otmp->blessed + 1;
 		if(otmp->cursed)
@@ -1483,6 +1577,30 @@ as_extra_healing:
 		//Incantifiers likewise gain intrinsics but not nutrition.
 		cprefx(otmp->corpsenm, TRUE, FALSE);
 	    cpostfx(otmp->corpsenm, FALSE, FALSE, FALSE);
+	break;
+	case POT_SAP:
+		unkn++;
+		if (herbivorous(youracedata) || !carnivorous(youracedata)) {
+			pline("It tastes like %s%s.",
+				Hallucination ? rndmonnam() : mons[otmp->corpsenm].mname,
+				Hallucination ? " juice" : " sap");
+			if(!Hallucination) otmp->known = TRUE;
+			if (!Race_if(PM_INCANTIFIER) && !umechanoid)
+				lesshungry((otmp->odiluted ? 1 : 2) *
+					(otmp->cursed ? mons[(otmp)->corpsenm].cnutrit*1.5/5 : 
+					 mons[(otmp)->corpsenm].cnutrit/5));
+		} else {
+			pline("Ugh. That plant matter is disgusting.");
+			if(!umechanoid && !Race_if(PM_INCANTIFIER)){
+				make_vomiting(Vomiting+d(10,8), TRUE);
+				if (!otmp->cursed)
+					lesshungry((otmp->odiluted ? 1 : 2) *
+						(otmp->blessed ? mons[(otmp)->corpsenm].cnutrit*1.5/5 : 
+						 mons[(otmp)->corpsenm].cnutrit/5));
+			}
+		}
+		cprefx(otmp->corpsenm, TRUE, FALSE);
+		cpostfx(otmp->corpsenm, FALSE, FALSE, FALSE);
 	break;
 	default:
 		impossible("What a funny potion! (%u)", otmp->otyp);
@@ -1598,8 +1716,8 @@ boolean your_fault;
 			mon->mhp--;
 	}
 
-	/* oil and blood don't instantly evaporate */
-	if (obj->otyp != POT_OIL && obj->otyp != POT_BLOOD && cansee(mon->mx,mon->my))
+	/* oil, blood, and sap don't instantly evaporate */
+	if (obj->otyp != POT_OIL && obj->otyp != POT_BLOOD && obj->otyp != POT_SAP && cansee(mon->mx,mon->my))
 		pline("%s.", Tobjnam(obj, "evaporate"));
 
     if (isyou) {
@@ -1619,6 +1737,8 @@ boolean your_fault;
 		    losehp(d(obj->cursed ? 2 : 1, obj->blessed ? 4 : 8),
 				    "potion of acid", KILLED_BY_AN);
 		}
+		//Kills any skin gray mold
+		youmonst.mgmld_skin = 0;
 	break;
 	case POT_BLOOD:{
 		int mtyp = obj->corpsenm;
@@ -1660,6 +1780,46 @@ boolean your_fault;
 		    }
 		}
 		IMPURITY_UP(u.uimp_blood)
+	}break;
+	case POT_SAP:{
+		int mtyp = obj->corpsenm;
+		if(acidic(&mons[mtyp]) && !Acid_resistance){
+		    pline("This burns%s!", obj->blessed ? " a little" :
+				    obj->cursed ? " a lot" : "");
+		    losehp(d(obj->cursed ? 2 : 1, obj->blessed ? 4 : 8),
+				    "potion of acidic sap", KILLED_BY_AN);
+		}
+		if(freezing(&mons[mtyp]) && !Cold_resistance){
+		    pline("This burns%s!", obj->blessed ? " a little" :
+				    obj->cursed ? " a lot" : "");
+		    losehp(d(obj->cursed ? 2 : 1, obj->blessed ? 4 : 8),
+				    "potion of cryonic sap", KILLED_BY_AN);
+		}
+		if(burning(&mons[mtyp]) && !Fire_resistance){
+		    pline("This burns%s!", obj->blessed ? " a little" :
+				    obj->cursed ? " a lot" : "");
+		    losehp(d(obj->cursed ? 2 : 1, obj->blessed ? 4 : 8),
+				    "potion of scalding sap", KILLED_BY_AN);
+		}
+		if(poisonous(&mons[mtyp]) && !Poison_resistance){
+			if (Upolyd) {
+			    if (u.mh <= 5) u.mh = 1; else u.mh -= 5;
+			} else {
+			    if (u.uhp <= 5) u.uhp = 1; else u.uhp -= 5;
+			}
+			pline("Ecch - this must be poisonous!");
+			losestr(1);
+			exercise(A_CON, FALSE);
+		}
+		if (touch_petrifies(&mons[mtyp])) {
+		    if (!Stone_resistance &&
+			!(poly_when_stoned(youracedata) && polymon(PM_STONE_GOLEM))) {
+			if (!Stoned) Stoned = 5;
+			killer_format = KILLED_BY;
+			Sprintf(killer_buf, "%s sap", mons[mtyp].mname);
+			delayed_killer = killer_buf;
+		    }
+		}
 	}break;
 	case POT_AMNESIA:
 		/* Uh-oh! */
@@ -1725,6 +1885,26 @@ boolean your_fault;
 	case POT_CONFUSION:
 	case POT_BOOZE:
 		if(!resist(mon, POTION_CLASS, 0, NOTELL))  mon->mconf = TRUE;
+		pline("%s %s in pain!", Monnam(mon),
+			is_silent_mon(mon) ? "writhes" : "shrieks");
+		if (is_gray_mold(mon->data) && obj->otyp == POT_BOOZE) {
+			//More concentrated alcohol is more effective
+		    if (obj->blessed) {
+				mon->mhp -= d(2,6);
+			}
+			else if(obj->cursed) {
+				mon->mhp -= 100;
+			}
+			else {
+				mon->mhp -= d(6,6);
+			}
+			if (mon->mhp < 1) {
+				if (your_fault)
+				killed(mon);
+				else
+				monkilled(mon, "", AD_ACID);
+			}
+		}
 		break;
 	case POT_INVISIBILITY:
 		angermon = FALSE;
@@ -1944,6 +2124,7 @@ boolean your_fault;
 			    monkilled(mon, "", AD_ACID);
 		    }
 		}
+		mon->mgmld_skin = 0;
 		break;
 	case POT_PRIMORDIAL_WATERS:
 		if (!resists_acid(mon) && !resist(mon, POTION_CLASS, 0, NOTELL)) {
@@ -2006,7 +2187,55 @@ boolean your_fault;
 				pline("%s looks rather ill.", Monnam(mon));
 		}
 		if (touch_petrifies(&mons[mtyp]) && !resists_ston(mon)) {
-			minstapetrify(mon, TRUE);
+			minstapetrify(mon, TRUE, FALSE);
+		}
+	}break;
+	case POT_SAP:{
+		int mtyp = obj->corpsenm;
+		if(acidic(&mons[mtyp]) && !resists_acid(mon)){
+		    pline("%s %s in pain!", Monnam(mon),
+			  is_silent_mon(mon) ? "writhes" : "shrieks");
+		    mon->mhp -= d(obj->cursed ? 2 : 1, obj->blessed ? 4 : 8);
+		    if (mon->mhp < 1) {
+			if (your_fault)
+			    killed(mon);
+			else
+			    monkilled(mon, "", AD_ACID);
+			}
+		}
+		if(freezing(&mons[mtyp]) && !resists_cold(mon)){
+		    pline("%s %s in pain!", Monnam(mon),
+			  is_silent_mon(mon) ? "writhes" : "shrieks");
+		    mon->mhp -= d(obj->cursed ? 2 : 1, obj->blessed ? 4 : 8);
+		    if (mon->mhp < 1) {
+			if (your_fault)
+			    killed(mon);
+			else
+			    monkilled(mon, "", AD_COLD);
+			}
+		}
+		if(burning(&mons[mtyp]) && !resists_fire(mon)){
+		    pline("%s %s in pain!", Monnam(mon),
+			  is_silent_mon(mon) ? "writhes" : "shrieks");
+		    mon->mhp -= d(obj->cursed ? 2 : 1, obj->blessed ? 4 : 8);
+		    if (mon->mhp < 1) {
+			if (your_fault)
+			    killed(mon);
+			else
+			    monkilled(mon, "", AD_FIRE);
+			}
+		}
+		if(poisonous(&mons[mtyp]) && !resists_poison(mon)){
+			if((mon->mhpmax > 3) && !resist(mon, POTION_CLASS, 0, NOTELL))
+				mon->mhpmax /= 2;
+			if((mon->mhp > 2) && !resist(mon, POTION_CLASS, 0, NOTELL))
+				mon->mhp /= 2;
+			if (mon->mhp > mon->mhpmax) mon->mhp = mon->mhpmax;
+			if (canseemon(mon))
+				pline("%s looks rather ill.", Monnam(mon));
+		}
+		if (touch_petrifies(&mons[mtyp]) && !resists_ston(mon)) {
+			minstapetrify(mon, TRUE, FALSE);
 		}
 	}break;
 	case POT_POLYMORPH:
@@ -2217,6 +2446,9 @@ register struct obj *obj;
 		    You_feel("a sense of loss.");
 		} else
 		    exercise(A_CON, FALSE);
+		break;
+	case POT_SAP:
+		exercise(A_CON, FALSE);
 		break;
 	case POT_GAIN_LEVEL:
 		You_feel("adept.");
@@ -2595,7 +2827,7 @@ boolean amnesia;
 		}
 
 		/* KMH -- Water into acid causes an explosion */
-		if (obj->otyp == POT_ACID || (obj->otyp == POT_BLOOD && acidic(&mons[obj->corpsenm]))) {
+		if (obj->otyp == POT_ACID || (obj->otyp == POT_BLOOD && acidic(&mons[obj->corpsenm])) || (obj->otyp == POT_SAP && acidic(&mons[obj->corpsenm]))) {
 			pline("It boils vigorously!");
 			You("are caught in the explosion!");
 			losehp(Acid_resistance ? rnd(5) : rnd(10),
@@ -2959,7 +3191,14 @@ dodip()
 				}
 				bless(obj);
 				obj->bknown=1;
+				potion->bknown=1;
 				goto poof;
+			}
+			else {
+				if(potion->bknown)
+					obj->bknown=1;
+				else if(obj->bknown)
+					potion->bknown=1;
 			}
 		} else if (potion->cursed) {
 			if (obj->blessed) {
@@ -2981,7 +3220,14 @@ dodip()
 				}
 				curse(obj);
 				obj->bknown=1;
+				potion->bknown=1;
 				goto poof;
+			}
+			else {
+				if(potion->bknown)
+					obj->bknown=1;
+				else if(obj->bknown)
+					potion->bknown=1;
 			}
 		} else {
 			switch(artifact_wet(obj,TRUE)) {
@@ -3062,15 +3308,17 @@ dodip()
 	    }
 	    potion->in_use = FALSE;	/* didn't go poof */
 	    return MOVE_STANDARD;
-	} else if(obj->oclass == POTION_CLASS && (obj->otyp != potion->otyp || (obj->otyp == POT_BLOOD && obj->corpsenm != potion->corpsenm))) {
+	} else if(obj->oclass == POTION_CLASS && (obj->otyp != potion->otyp || (obj->otyp == POT_BLOOD && obj->corpsenm != potion->corpsenm) || (obj->otyp == POT_SAP && obj->corpsenm != potion->corpsenm))) {
 		/* Mixing potions is dangerous... */
 		pline_The("potions mix...");
 		/* KMH, balance patch -- acid is particularly unstable */
 		// Slashem tweak added
 		if (obj->cursed || obj->otyp == POT_ACID || 
 			(obj->otyp == POT_BLOOD && acidic(&mons[obj->corpsenm])) ||
+			(obj->otyp == POT_SAP && acidic(&mons[obj->corpsenm])) ||
 		    potion->cursed || potion->otyp == POT_ACID || 
 			(potion->otyp == POT_BLOOD && acidic(&mons[potion->corpsenm])) || 
+			(potion->otyp == POT_SAP && acidic(&mons[potion->corpsenm])) || 
 			!rn2(10)
 		) {
 			pline("BOOM!  They explode!");
@@ -3169,7 +3417,8 @@ dodip()
 	}
 	
 	if( (potion->otyp == POT_ACID || 
-			(potion->otyp == POT_BLOOD && acidic(&mons[potion->corpsenm]))) 
+			(potion->otyp == POT_BLOOD && acidic(&mons[potion->corpsenm])) ||
+			(potion->otyp == POT_SAP && acidic(&mons[potion->corpsenm]))) 
 		&& (!(obj->opoisoned & OPOISON_ACID) || obj->otyp == VIPERWHIP)
 	){
 		if(is_corrodeable(obj) && !obj->oerodeproof && obj->oeroded2 < MAX_ERODE){
@@ -3188,7 +3437,7 @@ dodip()
 			if(obj->otyp != VIPERWHIP) obj->opoisoned = 0;
 			if(obj->otyp == VIPERWHIP) pline("%s is drawn up into %s.",
 				  buf, the(xname(obj)));
-			else pline("%s forms a coating on %s.",
+			else pline("%s forms an acidic coating on %s.",
 				  buf, the(xname(obj)));
 			if(obj->otyp == VIPERWHIP){
 				if(obj->opoisonchrgs && obj->opoisoned == OPOISON_ACID) obj->opoisonchrgs += 2;
@@ -3201,7 +3450,8 @@ dodip()
 	
 	if(is_poisonable(obj)) {
 	    if( (potion->otyp == POT_SICKNESS || 
-				(potion->otyp == POT_BLOOD && poisonous(&mons[potion->corpsenm]))) 
+				(potion->otyp == POT_BLOOD && poisonous(&mons[potion->corpsenm])) ||
+				(potion->otyp == POT_SAP && poisonous(&mons[potion->corpsenm]))) 
 			&& (!(obj->opoisoned & OPOISON_BASIC || arti_poisoned(obj))
 	    		|| obj->otyp == VIPERWHIP)
 		){
@@ -3227,7 +3477,6 @@ dodip()
 				Sprintf(buf, "One of %s", the(xname(potion)));
 			else
 				Strcpy(buf, The(xname(potion)));
-			obj->opoisoned = 0;
 			if(obj->otyp != VIPERWHIP) obj->opoisoned = 0;
 			if(obj->otyp == VIPERWHIP) pline("%s is drawn up into %s.",
 				  buf, the(xname(obj)));
@@ -3245,7 +3494,6 @@ dodip()
 				Sprintf(buf, "One of %s", the(xname(potion)));
 			else
 				Strcpy(buf, The(xname(potion)));
-			obj->opoisoned = 0;
 			if(obj->otyp != VIPERWHIP) obj->opoisoned = 0;
 			if(obj->otyp == VIPERWHIP) pline("%s is drawn up into %s.",
 				  buf, the(xname(obj)));
@@ -3263,7 +3511,6 @@ dodip()
 				Sprintf(buf, "One of %s", the(xname(potion)));
 			else
 				Strcpy(buf, The(xname(potion)));
-			obj->opoisoned = 0;
 			if(obj->otyp != VIPERWHIP) obj->opoisoned = 0;
 			if(obj->otyp == VIPERWHIP) pline("%s is drawn up into %s.",
 				  buf, the(xname(obj)));
@@ -3284,7 +3531,6 @@ dodip()
 				Sprintf(buf, "One of %s", the(xname(potion)));
 			else
 				Strcpy(buf, The(xname(potion)));
-			obj->opoisoned = 0;
 			if(obj->otyp != VIPERWHIP) obj->opoisoned = 0;
 			if(obj->otyp == VIPERWHIP) pline("%s is drawn up into %s.",
 				  buf, the(xname(obj)));
@@ -3325,7 +3571,8 @@ dodip()
 	}
 	if(isSignetRing(obj->otyp)) {
 	    if( (potion->otyp == POT_SICKNESS ||
-				(potion->otyp == POT_BLOOD && poisonous(&mons[potion->corpsenm]))
+				(potion->otyp == POT_BLOOD && poisonous(&mons[potion->corpsenm])) ||
+				(potion->otyp == POT_SAP && poisonous(&mons[potion->corpsenm]))
 			) && (!obj->opoisoned || obj->opoisoned & OPOISON_BASIC)){
 			char buf[BUFSZ];
 			if (potion->quan > 1L)
@@ -3384,7 +3631,8 @@ dodip()
 			obj->opoisonchrgs = 30;
 			goto poof;
 	    } else if((potion->otyp == POT_ACID ||
-				(potion->otyp == POT_BLOOD && acidic(&mons[potion->corpsenm]))
+				(potion->otyp == POT_BLOOD && acidic(&mons[potion->corpsenm])) ||
+				(potion->otyp == POT_SAP && acidic(&mons[potion->corpsenm]))
 			) && (!obj->opoisoned || obj->opoisoned & OPOISON_ACID)) {
 			char buf[BUFSZ];
 			if (potion->quan > 1L)
@@ -3517,6 +3765,15 @@ dodip()
 	    useup(potion);
 	    return MOVE_STANDARD;
 	}
+
+	/* Sapburner recharge with sap potion */
+	if(obj->otyp == SAPBURNER && potion->otyp == POT_SAP){
+		pline("You fill %s with sap.", the(xname(obj)));
+		obj->ovar1 = 80L + rnd(20);
+		useup(potion);
+		return MOVE_STANDARD;
+	}
+
     more_dips:
 
 	if((obj->otyp == SUNROD)
@@ -3703,7 +3960,7 @@ register struct obj *obj;
 				(mtmp3 && canseemon(mtmp3)) ? a_monnam(mtmp3) : "");
 		}
 		int artwishes = u.uconduct.wisharti;
-		makewish(allow_artwish()|WISH_VERBOSE);
+		makewish(WISH_SINGLE_USE | allow_artwish()|WISH_VERBOSE);
 		if (u.uconduct.wisharti > artwishes) {
 			/* made artifact wish */
 			if (mtmp2) {
