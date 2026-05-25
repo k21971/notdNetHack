@@ -11392,6 +11392,7 @@ resizeArmor()
 
 	if (flags.aasimar_type == AASIMAR_TYPE_CLOUDFACE && !Upolyd
 		&& ptr == youracedata
+		&& !(u.dx || u.dy || u.dz)
 		&& arm_blocks_upper_body(otmp->otyp)
 		&& !check_omod(otmp, OMOD_SHOULDER_BARING)
 	){
