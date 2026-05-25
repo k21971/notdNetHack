@@ -7872,7 +7872,7 @@ struct monst *magr;
 		cast_spell(magr, mdef, &attkbuff, spellnum, x(mdef), y(mdef));
 	}
 
-	if(!magr->mpeaceful && mon_can_see_you(magr)
+	if(!youagr && !magr->mpeaceful && mon_can_see_you(magr)
 		&& distmin(x(magr), y(magr), u.ux, u.uy) <= range
 		&& !onscary(u.ux, u.uy, magr)
 		&& !(!rn2(4) || (frequency_decrease && mlev(magr) < 30 && rn2(31-mlev(magr))))
