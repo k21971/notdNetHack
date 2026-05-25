@@ -16184,6 +16184,7 @@ hmoncore(struct monst *magr, struct monst *mdef, struct attack *attk, struct att
 			if(is_iron_mon(magr)) {
 				ironobj |= W_SKIN;
 				seardmg += rnd(mlev(mdef));
+				mdef->mironmarked = TRUE;
 			}
 			else if (youagr && unarmed_punch && u.sealsActive&SEAL_SIMURGH) {
 				/* Simurgh's iron claws, for the player attacking with bared hands */
@@ -16200,7 +16201,7 @@ hmoncore(struct monst *magr, struct monst *mdef, struct attack *attk, struct att
 			}
 			else if(is_holy_mon(magr) || (youagr && !Upolyd && TIEFLING_FALLEN)) {
 				holyobj |= W_SKIN;
-				seardmg += d(3, 7);
+				seardmg += d(min(3, 1+mlev(magr)/10), 7);
 			} 
 		}
 		if (hates_unholy_mon(mdef)){
@@ -16210,7 +16211,7 @@ hmoncore(struct monst *magr, struct monst *mdef, struct attack *attk, struct att
 			} 
 			else if(is_unholy_mon(magr) || (youagr && !Upolyd && TIEFLING_FALLEN)) {
 				unholyobj |= W_SKIN;
-				seardmg += d(4, 9);
+				seardmg += d(min(4, 1+mlev(magr)/10), 9);
 			}
 			else if(magr->mtyp == PM_GREEN_STEEL_GOLEM) {
 				grnstlobj |= W_SKIN;
@@ -16224,7 +16225,7 @@ hmoncore(struct monst *magr, struct monst *mdef, struct attack *attk, struct att
 			}
 			else if(is_unblessed_mon(magr)) {
 				unblessedobj |= W_SKIN;
-				seardmg += d(3, 8);
+				seardmg += d(min(3, 1+mlev(magr)/10), 8);
 			}
 		}
 
