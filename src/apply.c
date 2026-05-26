@@ -1097,7 +1097,7 @@ struct obj **obj_p;
 				vis = TRUE;
 			}
 			if (vis){
-				signs_mirror();
+				signs_appearance(FALSE, TRUE);
 			}
 			if(Insight >= 10 && !obj->oartifact){
 				// if(wizard)
@@ -3250,7 +3250,7 @@ clone_or_transfuse(struct obj *obj)
 int
 parasite_count()
 {
-	return (u.brainsuckers + u.mm_up + u.explosion_up + u.jellyfish + u.cuckoo);
+	return (u.brainsuckers + u.mm_up + u.explosion_up + u.jellyfish + u.cuckoo + !!check_parasitology(PARISITE_WINDOWS));
 }
 
 STATIC_OVL int
