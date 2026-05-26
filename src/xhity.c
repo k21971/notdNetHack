@@ -16589,6 +16589,7 @@ hmoncore(struct monst *magr, struct monst *mdef, struct attack *attk, struct att
 			if(is_iron_mon(magr) || (youagr && uclockwork && u.clk_material == IRON)) {
 				ironobj |= W_SKIN;
 				seardmg += rnd(mlev(mdef));
+				mdef->mironmarked = TRUE;
 			}
 			else if (youagr && unarmed_punch && u.sealsActive&SEAL_SIMURGH) {
 				/* Simurgh's iron claws, for the player attacking with bared hands */
@@ -16605,7 +16606,7 @@ hmoncore(struct monst *magr, struct monst *mdef, struct attack *attk, struct att
 			}
 			else if(is_holy_mon(magr) || (youagr && !Upolyd && TIEFLING_FALLEN)) {
 				holyobj |= W_SKIN;
-				seardmg += d(3, 7);
+				seardmg += d(min(3, 1+mlev(magr)/10), 7);
 			}
 			else if (youagr && uclockwork && u.clk_material == GOLD && u.ualign.record > 3) {
 				holyobj |= W_SKIN;
@@ -16619,7 +16620,7 @@ hmoncore(struct monst *magr, struct monst *mdef, struct attack *attk, struct att
 			} 
 			else if(is_unholy_mon(magr) || (youagr && !Upolyd && TIEFLING_FALLEN)) {
 				unholyobj |= W_SKIN;
-				seardmg += d(4, 9);
+				seardmg += d(min(4, 1+mlev(magr)/10), 9);
 			}
 			else if(magr->mtyp == PM_GREEN_STEEL_GOLEM || (youagr && uclockwork && u.clk_material == GREEN_STEEL)) {
 				grnstlobj |= W_SKIN;
@@ -16637,7 +16638,7 @@ hmoncore(struct monst *magr, struct monst *mdef, struct attack *attk, struct att
 			}
 			else if(is_unblessed_mon(magr)) {
 				unblessedobj |= W_SKIN;
-				seardmg += d(3, 8);
+				seardmg += d(min(3, 1+mlev(magr)/10), 8);
 			}
 		}
 
@@ -23967,9 +23968,10 @@ perform_gaze_attacks()
 		if(!mdef)
 			continue;
 		if(!nonthreat_ful(mdef) && canseemon(mdef)
-		 && (mdef->mtyp != PM_FLOATING_EYE || !mdef->mcansee || Free_action
-			|| (distmin(u.ux, u.uy, mdef->mx, mdef->my) <= 1 && u.uattked)
-		  )
+			&& ((mdef->mtyp != PM_FLOATING_EYE || !mdef->mcansee || Free_action)
+				|| (distmin(u.ux, u.uy, mdef->mx, mdef->my) <= 1 && u.uattked)
+			)
+			&& (mdef->mtyp != PM_MEDUSA || Stone_resistance)
 		){
 			dogaze(mdef);
 			break;
@@ -23978,17 +23980,46 @@ perform_gaze_attacks()
 }
 
 void
-perform_wizegaze_attacks()
+perform_widegaze_attacks()
 {
 	struct monst *mdef;
-	int nx = u.ux, ny = u.uy;
 	for(mdef = fmon; mdef; mdef = mdef->nmon){
 		if(DEADMONSTER(mdef))
 			continue;
 		if(!nonthreat_ful(mdef) && canseemon(mdef) && distmin(u.ux, u.uy, mdef->mx, mdef->my) <= BOLT_LIM
 		 && (mdef->mtyp != PM_FLOATING_EYE || !mdef->mcansee || Free_action)
+		 && (mdef->mtyp != PM_MEDUSA || Stone_resistance)
 		){
 			dogaze(mdef);
+		}
+	}
+}
+
+void
+perform_cloudface_widegaze()
+{
+	struct monst *mdef;
+	if(uarmh && FacelessHelm(uarmh)){
+		if(uarmh->otyp != CRYSTAL_HELM || is_opaque(uarmh))
+			return;
+	}
+	if(uarmc && FacelessCloak(uarmc))
+		return;
+		
+	for(mdef = fmon; mdef; mdef = mdef->nmon){
+		if(DEADMONSTER(mdef))
+			continue;
+		if(!nonthreat_ful(mdef) && couldsee(mdef->mx, mdef->my) && distmin(u.ux, u.uy, mdef->mx, mdef->my) <= BOLT_LIM
+			&& !((nonliving(mdef->data) && !is_android(mdef->data)) 
+				|| has_template(mdef, TOMB_HERD) /*not a statue-piloting thingy */
+				|| is_primordial(mdef->data)
+				|| is_alienist(mdef->data)
+				|| is_great_old_one(mdef->data)
+				|| mdef->encouraged < -1*Insight/7
+			)
+			&& mon_can_see_you(mdef)
+		){
+			mdef->encouraged--;
 		}
 	}
 }
