@@ -376,7 +376,7 @@ minimal_enlightenment()
 			'f', 0, ATR_NONE, buf,
 			MENU_UNSELECTED);
 	}
-	else if(flags.aasimar_type && (u.ulevel > 7 || flags.aasimar_type == AASIMAR_TYPE_CLOUDFACE)) {
+	else if(flags.aasimar_type && (u.ulevel >= 7 || flags.aasimar_type == AASIMAR_TYPE_CLOUDFACE)) {
 		Sprintf(buf, "Show your celestial traits.");
 		any.a_int = DOATTRIB_MUTATIONS;
 		add_menu(tmpwin, NO_GLYPH, &any,
