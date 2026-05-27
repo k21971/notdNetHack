@@ -3190,9 +3190,6 @@ E void NDECL(timer_sanity_check);
 E long FDECL(encodeconduct, (void));
 #endif
 E void FDECL(topten, (int));
-#ifdef XLOGFILE
-E void FDECL(record_xlogfile, (int));
-#endif
 E void FDECL(prscore, (int,char **));
 E struct obj *FDECL(tt_oname, (struct obj *));
 E void NDECL(write_HUP_file);

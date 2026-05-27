@@ -501,6 +501,9 @@ int how;
 #ifdef LOGFILE
 	FILE *lfile;
 #endif /* LOGFILE */
+#ifdef XLOGFILE
+	FILE *xlfile;
+#endif /* XLOGFILE */
 
 /* Under DICE 3.0, this crashes the system consistently, apparently due to
  * corruption of *rfile somewhere.  Until I figure this out, just cut out
@@ -559,6 +562,17 @@ int how;
 	}
 #endif /* LOGFILE */
 
+#ifdef XLOGFILE
+         if(lock_file(XLOGFILE, SCOREPREFIX, 10)) {
+             if(!(xlfile = fopen_datafile(XLOGFILE, "a", SCOREPREFIX))) {
+                  HUP raw_print("Cannot open extended log file!");
+             } else {
+                  write_xlentry(xlfile, t0);
+                  (void) fclose(xlfile);
+             }
+             unlock_file(XLOGFILE);
+         }
+#endif /* XLOGFILE */
 
 	if (wizard || discover) {
 	    if (how != PANICKED) HUP {
@@ -1417,26 +1431,5 @@ nsb_unmung_line(p)
 	while ((p = index(p, '|')) != 0) *p = ' ';
 }
 #endif /* NO_SCAN_BRACK */
-
-#ifdef XLOGFILE
-void
-record_xlogfile(int how)
-{
-	struct toptenentry t0;
-	FILE *xlfile;
-
-	if (program_state.panicking) return;
-	get_current_ttentry_data(&t0, how);
-	if (lock_file(XLOGFILE, SCOREPREFIX, 10)) {
-	    if (!(xlfile = fopen_datafile(XLOGFILE, "a", SCOREPREFIX))) {
-		HUP raw_print("Cannot open extended log file!");
-	    } else {
-		write_xlentry(xlfile, &t0);
-		(void) fclose(xlfile);
-	    }
-	    unlock_file(XLOGFILE);
-	}
-}
-#endif /* XLOGFILE */
 
 /*topten.c*/
