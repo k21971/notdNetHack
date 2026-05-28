@@ -15928,8 +15928,8 @@ hmoncore(struct monst *magr, struct monst *mdef, struct attack *attk, struct att
 			mdef != u.ustuck &&
 			!(youagr ? Fumbling : mon_resistance(magr, FUMBLING)) &&
 			!(youagr ? Stunned : (magr->mconf || magr->mstun)) &&
-			(weapon == uwep || (weapon == uswapwep && u.twoweap)))
-		{
+			(youagr ? (weapon == uwep || (weapon == uswapwep && u.twoweap)) : (weapon == MON_WEP(magr) || weapon == MON_SWEP(magr)))
+		){
 			/* if using two weapons, use worse of lance and two-weapon skills */
 			jousting = 0;
 			int joust_dieroll;

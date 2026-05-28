@@ -3709,6 +3709,7 @@ E boolean FDECL(safe_attack, (struct monst *, struct monst *, struct attack *, s
 E int FDECL(beastmastery, (struct monst *));
 E int NDECL(narya);
 E int NDECL(mountedCombat);
+E int NDECL(def_mountedCombat);
 E boolean FDECL(obj_silver_searing, (struct obj *));
 E boolean FDECL(obj_jade_searing, (struct obj *));
 E int FDECL(hatesobjdmg, (struct monst *, struct obj *, struct monst *));

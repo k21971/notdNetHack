@@ -1343,6 +1343,7 @@
 							 ((mon)->mtyp == PM_HOD_SEPHIRAH && Role_if(PM_HEALER)) || \
 							 ((mon)->mtyp == PM_DEMINYMPH && (mon)->mvar_deminymph_role == PM_HEALER))
 #define mon_undead_hunter(mon)	((mon)->mtyp == PM_UNDEAD_HUNTER || ((mon)->mtyp == PM_DEMINYMPH && (mon)->mvar_deminymph_role == PM_UNDEAD_HUNTER))
+#define mon_knight_riding(mon)	(mon_knight(mon) || mon_dark_knight(mon) || (mon)->mtyp == PM_OONA || (mon)->mtyp == PM_ALRUNES)
 #define mon_knight(mon)	((mon)->mtyp == PM_KNIGHT || (mon)->mtyp == PM_KING_ARTHUR || \
 						 (mon)->mtyp == PM_SILVERKNIGHT || (mon)->mtyp == PM_CELEBORN || \
 						 ((mon)->mtyp == PM_HOD_SEPHIRAH && Role_if(PM_KNIGHT)) || \
