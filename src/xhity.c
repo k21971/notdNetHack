@@ -23478,11 +23478,9 @@ void
 perform_cloudface_widegaze()
 {
 	struct monst *mdef;
-	if(uarmh && FacelessHelm(uarmh)){
-		if(uarmh->otyp != CRYSTAL_HELM || is_opaque(uarmh))
-			return;
-	}
-	if(uarmc && FacelessCloak(uarmc))
+	if(uarmh && FacelessHelm(uarmh) && is_opaque(uarmh))
+		return;
+	if(uarmc && FacelessCloak(uarmc) && is_opaque(uarmc))
 		return;
 		
 	for(mdef = fmon; mdef; mdef = mdef->nmon){
